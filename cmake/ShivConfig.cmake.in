@@ -1,0 +1,17 @@
+# save this as <project_root>/cmake/<project_name>Config.cmake.in
+# then in <project_root>/cmake/CMakeLists.txt put
+# 
+# include(configure)
+# setup_config(ObsidianConfig.cmake.in)
+# 
+# 
+
+@PACKAGE_INIT@
+include(CMakeFindDependencyMacro)
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+# insert dependencies needed here...
+find_dependency(Hell REQUIRED)
+find_dependency(Obsidian REQUIRED)
+# ...
+check_required_components("@PROJECT_NAME@")
+set(@PROJECT_NAME@_FOUND TRUE)
