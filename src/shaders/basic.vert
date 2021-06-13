@@ -9,16 +9,17 @@ layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUv;
 
 layout(set = 0, binding = 0) uniform Matrices {
-    mat4 model;
     mat4 view;
     mat4 proj;
 } matrices;
 
+const mat4 modelMatrix = mat4(1);
+
 void main()
 {
-    gl_Position = matrices.proj * matrices.view * matrices.model * vec4(pos, 1.0);
+    gl_Position = matrices.proj * matrices.view * modelMatrix * vec4(pos, 1.0);
     outColor = vec3(1, 1, 1);
-    outNormal = mat3(matrices.view) * mat3(matrices.model) * normal;
+    outNormal = mat3(matrices.view) * mat3(modelMatrix) * normal;
     outUv = uvw;
     //gl_Position.z = (gl_Position.z + gl_Position.w) / 2.0; // for opengl compatibility
 }

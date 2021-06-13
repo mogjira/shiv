@@ -12,8 +12,7 @@ typedef Obdn_V_Image             Image;
 typedef Obdn_DescriptorBinding DescriptorBinding;
 
 enum {
-    PIPELINE_RASTER,
-    PIPELINE_POST,
+    PIPELINE_BASIC,
     PIPELINE_COUNT
 };
 
@@ -115,7 +114,7 @@ createPipelineLayout(VkDevice device, const VkDescriptorSetLayout* dsetLayout,
 static void
 createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
 {
-    Obdn_R_AttributeSize attrSizes[3] = {12, 12, 8};
+    Obdn_GeoAttributeSize attrSizes[3] = {12, 12, 8};
 
     VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
                                       VK_DYNAMIC_STATE_SCISSOR};
@@ -124,7 +123,9 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
         {// raster
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_r_GetVertexDescription(3, attrSizes),
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .cullMode          = VK_CULL_MODE_NONE,
+         .polygonMode       = VK_POLYGON_MODE_LINE,
          .frontFace         = VK_FRONT_FACE_CLOCKWISE,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -172,7 +173,7 @@ initCameraUniform(Shiv_Renderer* renderer, Obdn_Memory* memory)
 }
 
 static void 
-updateCamera(Shiv_Renderer* renderer, const Obdn_S_Scene* scene, uint8_t index)
+updateCamera(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 {
     Camera* cam = (Camera*)renderer->cameraUniform.elem[index];
     cam->view = scene->camera.view;
@@ -200,7 +201,7 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
     createDescriptorSetLayout(shiv->device, MAX_TEXTURE_COUNT, &shiv->descriptorSetLayout);
     createPipelineLayout(shiv->device, &shiv->descriptorSetLayout, &shiv->pipelineLayout);
     createPipelines(shiv, NULL);
-    obdn_CreateDescriptorPool(shiv->device, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0, &shiv->descriptorPool);
+    obdn_CreateDescriptorPool(shiv->device, 1, MAX_TEXTURE_COUNT, 1, 1, 1, 1, &shiv->descriptorPool);
     obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1, &shiv->descriptorSetLayout, &shiv->descriptorSet);
     for (int i = 0; i < fbCount; i++)
     {
@@ -230,13 +231,14 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
         createFramebuffer(renderer, fb);
     }
 
-    if (scene->dirt & OBDN_S_CAMERA_VIEW_BIT || scene->dirt & OBDN_S_CAMERA_PROJ_BIT)
+    if (scene->dirt & OBDN_SCENE_CAMERA_VIEW_BIT || scene->dirt & OBDN_SCENE_CAMERA_PROJ_BIT)
     {
         renderer->cameraUniform.semaphore = 2;
     }
 
     if (renderer->cameraUniform.semaphore)
     {
+        hell_Print("Updating camera...\n");
         updateCamera(renderer, scene, fbi);
         renderer->cameraUniform.semaphore--;
     }
@@ -247,9 +249,19 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
     VkCommandBuffer cmdbuf = cmd->buffer;
     obdn_BeginCommandBuffer(cmdbuf);
 
+    obdn_CmdSetViewportScissorFull(cmdbuf, width, height);
+
     obdn_CmdBeginRenderPass_ColorDepth(cmdbuf, renderer->renderPass,
                                        renderer->framebuffers[fbi], width,
                                        height, 0.0, 0.1, 0.2, 1.0);
+
+    vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            renderer->pipelineLayout, 0, 1,
+                            &renderer->descriptorSet, 0, NULL);
+
+    vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer->graphicsPipelines[PIPELINE_BASIC]);
+
+    obdn_DrawGeo(cmdbuf, &scene->prims[0].geo);
 
     obdn_CmdEndRenderPass(cmdbuf);
     obdn_EndCommandBuffer(cmdbuf);
