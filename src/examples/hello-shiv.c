@@ -64,10 +64,10 @@ int main(int argc, char *argv[])
     memory = obdn_AllocMemory();
     swapchain = obdn_AllocSwapchain();
     scene = obdn_AllocScene();
-    obdn_CreateInstance(false, false, 0, NULL, instance);
+    obdn_CreateInstance(true, false, 0, NULL, instance);
     obdn_CreateMemory(instance, 100, 100, 100, 0, 0, memory);
     obdn_CreateScene(WWIDTH, WHEIGHT, 0.01, 100, scene);
-    obdn_UpdateCamera_LookAt(scene, (Vec3){0, 0, 10}, (Vec3){0,0,0}, (Vec3){0, 1, 0});
+    obdn_UpdateCamera_LookAt(scene, (Vec3){0, 0, 5}, (Vec3){0,0,0}, (Vec3){0, 1, 0});
     Obdn_AovInfo depthAov = {.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT,
                              .usageFlags =
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
