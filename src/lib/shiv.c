@@ -1,6 +1,7 @@
 #include <obsidian/common.h>
 #include <obsidian/r_pipeline.h>
 #include <obsidian/r_renderpass.h>
+#include <obsidian/framebuffer.h>
 #include <hell/len.h>
 #include <hell/hell.h>
 #include <string.h>
@@ -19,41 +20,48 @@ enum {
 #define SWAP_IMG_COUNT 2
 #define SPVDIR "shiv"
 
+_Static_assert(SWAP_IMG_COUNT == 2, "SWAP_IMG_COUNT must be 2 for now");
+
+typedef struct {
+    Coal_Mat4 view;
+    Coal_Mat4 proj;
+} Camera;
+
+typedef struct {
+    BufferRegion buffer;
+    void*        elem[2];
+    uint8_t      semaphore;
+} ResourceSwapchain;
+
 typedef struct Shiv_Renderer {
     Obdn_Instance*        instance;
-    BufferRegion          cameraRegion;
+    ResourceSwapchain     cameraUniform;
     VkPipeline            graphicsPipelines[PIPELINE_COUNT];
     //uint32_t              graphicsQueueFamilyIndex;
-    Command               renderCommand;
-    VkFramebuffer         mainFrameBuffers[SWAP_IMG_COUNT];
-    VkFramebuffer         postFrameBuffers[SWAP_IMG_COUNT];
+    Command               renderCommands[SWAP_IMG_COUNT];
+    VkFramebuffer         framebuffers[SWAP_IMG_COUNT];
     VkDescriptorPool      descriptorPool;
     VkDescriptorSet       descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout      pipelineLayout;
     VkFormat              colorFormat;
     VkFormat              depthFormat;
-    VkRenderPass          mainRenderPass;
-    VkRenderPass          postRenderPass;
+    VkRenderPass          renderPass;
     VkDevice              device;
 } Shiv_Renderer;
 
 static void createRenderPasses(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
-        VkRenderPass* mainRenderPass, VkRenderPass* postRenderPass)
+        VkImageLayout finalColorLayout, VkImageLayout finalDepthLayout,
+        VkRenderPass* mainRenderPass)
 {
     assert(mainRenderPass);
-    assert(postRenderPass);
     assert(device);
 
-    obdn_CreateRenderPass_ColorDepth(device, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    obdn_CreateRenderPass_ColorDepth(device, VK_IMAGE_LAYOUT_UNDEFINED, finalColorLayout,
+            VK_IMAGE_LAYOUT_UNDEFINED, finalDepthLayout,
             VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
             VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
             colorFormat, depthFormat, mainRenderPass);
-
-    obdn_CreateRenderPass_Color(device,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_ATTACHMENT_LOAD_OP_LOAD, colorFormat, postRenderPass);
 }
 
 static void createDescriptorSetLayout(VkDevice device, uint32_t maxTextureCount, VkDescriptorSetLayout* layout)
@@ -114,7 +122,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
 
     const Obdn_GraphicsPipelineInfo pipeInfosGraph[] = {
         {// raster
-         .renderPass        = instance->mainRenderPass,
+         .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
          .vertexDescription = obdn_r_GetVertexDescription(3, attrSizes),
          .frontFace         = VK_FRONT_FACE_CLOCKWISE,
@@ -122,63 +130,142 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
          .vertShader        = SPVDIR"/basic.vert.spv",
-         .fragShader        = SPVDIR"/basic.frag.spv"},
-        {// post
-         .renderPass        = instance->postRenderPass,
-         .layout            = instance->pipelineLayout,
-         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
-         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
-         .blendMode         = OBDN_R_BLEND_MODE_OVER,
-         .dynamicStateCount = LEN(dynamicStates),
-         .pDynamicStates    = dynamicStates,
-         .vertShader        = OBDN_FULL_SCREEN_VERT_SPV,
-         .fragShader        = postFragShaderPath ? postFragShaderPath
-                                                 : "post.frag.spv"}};
+         .fragShader        = SPVDIR"/basic.frag.spv"}};
 
     obdn_CreateGraphicsPipelines(instance->device, LEN(pipeInfosGraph), pipeInfosGraph,
                                    instance->graphicsPipelines);
 }
 
-static void
-createFramebuffers(Shiv_Renderer* shiv, uint32_t width, uint32_t height,
-                   const VkImageView depthView, const VkImageView colorViews[2])
+static void 
+createFramebuffer(Shiv_Renderer* renderer, const Obdn_Framebuffer* fb)
 {
-    VkImageView attachments[] = {colorViews[0], depthView};
-    obdn_CreateFramebuffer(shiv->instance, LEN(attachments), attachments, width, height, shiv->mainRenderPass, &shiv->mainFrameBuffers[0]);
-    attachments[0] = colorViews[1];
-    obdn_CreateFramebuffer(shiv->instance, LEN(attachments), attachments, width, height, shiv->mainRenderPass, &shiv->mainFrameBuffers[1]);
-    obdn_CreateFramebuffer(shiv->instance, 1, &colorViews[0], width, height, shiv->postRenderPass, &shiv->postFrameBuffers[0]);
-    obdn_CreateFramebuffer(shiv->instance, 1, &colorViews[1], width, height, shiv->postRenderPass, &shiv->postFrameBuffers[1]);
+    assert(fb->aovs[1].aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT);
+    VkImageView views[2] = {fb->aovs[0].view, fb->aovs[1].view};
+    obdn_CreateFramebuffer(renderer->instance, 2, views, fb->width, fb->height, renderer->renderPass, &renderer->framebuffers[fb->index]);
+}
+
+
+static void
+initCameraUniform(Shiv_Renderer* renderer, Obdn_Memory* memory)
+{
+    renderer->cameraUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(Camera), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_V_MEMORY_HOST_GRAPHICS_TYPE);
+    renderer->cameraUniform.elem[0] = renderer->cameraUniform.buffer.hostData;
+    renderer->cameraUniform.elem[1] = (Camera*)renderer->cameraUniform.buffer.hostData + 1;
+
+    VkDescriptorBufferInfo bi = {
+        .buffer = renderer->cameraUniform.buffer.buffer,
+        .offset = renderer->cameraUniform.buffer.offset,
+        .range  = renderer->cameraUniform.buffer.size,
+    };
+
+    VkWriteDescriptorSet writes = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstArrayElement = 0,
+        .dstSet = renderer->descriptorSet,
+        .dstBinding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .pBufferInfo = &bi,
+    };
+
+    vkUpdateDescriptorSets(renderer->device, 1, &writes, 0, NULL);
+}
+
+static void 
+updateCamera(Shiv_Renderer* renderer, const Obdn_S_Scene* scene, uint8_t index)
+{
+    Camera* cam = (Camera*)renderer->cameraUniform.elem[index];
+    cam->view = scene->camera.view;
+    cam->proj = scene->camera.proj;
 }
 
 #define MAX_TEXTURE_COUNT 16
 
 void
-shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, uint32_t width, uint32_t height,
-                    VkFormat colorFormat, VkFormat depthFormat, VkImageView depthAttachment, uint32_t viewCount,
-                    const VkImageView colorAttachments[viewCount], Shiv_Renderer* shiv)
+shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, 
+                    VkImageLayout finalColorLayout, VkImageLayout finalDepthLayout,
+                    uint32_t fbCount, const Obdn_Framebuffer fbs[fbCount], Shiv_Renderer* shiv)
 {
-    assert(viewCount == SWAP_IMG_COUNT);
     memset(shiv, 0, sizeof(Shiv_Renderer));
+    assert(fbCount == SWAP_IMG_COUNT);
     shiv->instance = instance;
     shiv->device   = obdn_GetDevice(instance);
-    shiv->renderCommand = obdn_CreateCommand(shiv->instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
 
-    createRenderPasses(shiv->device, colorFormat, depthFormat, &shiv->mainRenderPass, &shiv->postRenderPass);
+    assert(fbCount == 2);
+    assert(fbs[0].aovs[0].aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
+    assert(fbs[0].aovs[1].aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT);
+    createRenderPasses(shiv->device, fbs[0].aovs[0].format,
+                       fbs[0].aovs[1].format, finalColorLayout, finalDepthLayout,
+                        &shiv->renderPass);
     createDescriptorSetLayout(shiv->device, MAX_TEXTURE_COUNT, &shiv->descriptorSetLayout);
     createPipelineLayout(shiv->device, &shiv->descriptorSetLayout, &shiv->pipelineLayout);
     createPipelines(shiv, NULL);
     obdn_CreateDescriptorPool(shiv->device, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0, &shiv->descriptorPool);
     obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1, &shiv->descriptorSetLayout, &shiv->descriptorSet);
-    createFramebuffers(shiv, width, height, depthAttachment, colorAttachments);
+    for (int i = 0; i < fbCount; i++)
+    {
+        createFramebuffer(shiv, &fbs[i]);
+    }
+    for (int i = 0; i < fbCount; i++)
+    {
+        shiv->renderCommands[i] = obdn_CreateCommand(shiv->instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
+    }
+    initCameraUniform(shiv, memory);
+}
+
+VkSemaphore
+shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebuffer* fb, uint32_t waitCount,
+        VkSemaphore waitSemephores[waitCount])
+{
+    assert(scene->primCount > 0);
+    assert(scene->prims);
+    // must create framebuffers or find a cached one
+    const uint32_t fbi = fb->index;
+    const uint32_t width = fb->width;
+    const uint32_t height = fb->height;
+    assert(fbi < 2);
+    if (fb->dirty)
+    {
+        obdn_DestroyFramebuffer(renderer->instance, renderer->framebuffers[fbi]);
+        createFramebuffer(renderer, fb);
+    }
+
+    if (scene->dirt & OBDN_S_CAMERA_VIEW_BIT || scene->dirt & OBDN_S_CAMERA_PROJ_BIT)
+    {
+        renderer->cameraUniform.semaphore = 2;
+    }
+
+    if (renderer->cameraUniform.semaphore)
+    {
+        updateCamera(renderer, scene, fbi);
+        renderer->cameraUniform.semaphore--;
+    }
+
+    Obdn_Command* cmd = &renderer->renderCommands[fbi];
+    obdn_WaitForFence(renderer->device, &cmd->fence);
+    obdn_ResetCommand(cmd);
+    VkCommandBuffer cmdbuf = cmd->buffer;
+    obdn_BeginCommandBuffer(cmdbuf);
+
+    obdn_CmdBeginRenderPass_ColorDepth(cmdbuf, renderer->renderPass,
+                                       renderer->framebuffers[fbi], width,
+                                       height, 0.0, 0.1, 0.2, 1.0);
+
+    obdn_CmdEndRenderPass(cmdbuf);
+    obdn_EndCommandBuffer(cmdbuf);
+
+    obdn_SubmitGraphicsCommand(
+        renderer->instance, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, waitCount,
+        waitSemephores, 1, &cmd->semaphore,
+        cmd->fence, cmdbuf);
+
+    return cmd->semaphore;
 }
 
 void 
 shiv_DestroyInstance(Shiv_Renderer* instance)
 {
 }
-
-
 
 Shiv_Renderer* shiv_AllocRenderer(void)
 {
