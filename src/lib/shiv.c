@@ -11,10 +11,11 @@ typedef Obdn_V_Command           Command;
 typedef Obdn_V_Image             Image;
 typedef Obdn_DescriptorBinding DescriptorBinding;
 
-enum {
+typedef enum {
     PIPELINE_BASIC,
+    PIPELINE_WIREFRAME,
     PIPELINE_COUNT
-};
+} PipelineID;
 
 #define SWAP_IMG_COUNT 2
 #define SPVDIR "shiv"
@@ -34,9 +35,10 @@ typedef struct {
 
 typedef struct Shiv_Renderer {
     Obdn_Instance*        instance;
+    Hell_Grimoire*        grim;
     ResourceSwapchain     cameraUniform;
+    PipelineID            curPipeline;
     VkPipeline            graphicsPipelines[PIPELINE_COUNT];
-    //uint32_t              graphicsQueueFamilyIndex;
     Command               renderCommands[SWAP_IMG_COUNT];
     VkFramebuffer         framebuffers[SWAP_IMG_COUNT];
     VkDescriptorPool      descriptorPool;
@@ -48,6 +50,18 @@ typedef struct Shiv_Renderer {
     VkRenderPass          renderPass;
     VkDevice              device;
 } Shiv_Renderer;
+
+static void changeDrawMode(void* data)
+{
+    Shiv_Renderer* renderer = (Shiv_Renderer*)data;
+    const char* arg = hell_GetArg(renderer->grim, 1);
+    if (strcmp(arg, "wireframe") == 0) 
+        renderer->curPipeline = PIPELINE_WIREFRAME;
+    else if (strcmp(arg, "basic") == 0)
+        renderer->curPipeline = PIPELINE_BASIC;
+    else 
+        hell_Print("Options: wireframe basic\n");
+}
 
 static void createRenderPasses(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
         VkImageLayout finalColorLayout, VkImageLayout finalDepthLayout,
@@ -68,8 +82,8 @@ static void createDescriptorSetLayout(VkDevice device, uint32_t maxTextureCount,
     DescriptorBinding bindings[] = {{
             // camera
             .descriptorCount = 1,
-            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
         },{ // fragment shader whatever
             .descriptorCount = 1,
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -119,21 +133,37 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
     VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
                                       VK_DYNAMIC_STATE_SCISSOR};
 
-    const Obdn_GraphicsPipelineInfo pipeInfosGraph[] = {
-        {// raster
+    const Obdn_GraphicsPipelineInfo pipeInfos[] = {{
+        // basic
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
-         .cullMode          = VK_CULL_MODE_NONE,
-         .polygonMode       = VK_POLYGON_MODE_LINE,
+         .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
          .vertShader        = SPVDIR"/basic.vert.spv",
-         .fragShader        = SPVDIR"/basic.frag.spv"}};
+         .fragShader        = SPVDIR"/basic.frag.spv"
+    },{
+        // wireframe 
+         .renderPass        = instance->renderPass,
+         .layout            = instance->pipelineLayout,
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .polygonMode       = VK_POLYGON_MODE_LINE,
+         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
+         .dynamicStateCount = LEN(dynamicStates),
+         .pDynamicStates    = dynamicStates,
+         .vertShader        = SPVDIR"/basic.vert.spv",
+         .fragShader        = SPVDIR"/basic.frag.spv"
+    }};
 
-    obdn_CreateGraphicsPipelines(instance->device, LEN(pipeInfosGraph), pipeInfosGraph,
+    assert(LEN(pipeInfos) == PIPELINE_COUNT);
+
+    obdn_CreateGraphicsPipelines(instance->device, LEN(pipeInfos), pipeInfos,
                                    instance->graphicsPipelines);
 }
 
@@ -149,6 +179,9 @@ createFramebuffer(Shiv_Renderer* renderer, const Obdn_Framebuffer* fb)
 static void
 initCameraUniform(Shiv_Renderer* renderer, Obdn_Memory* memory)
 {
+    const VkPhysicalDeviceProperties* props = obdn_GetPhysicalDeviceProperties(renderer->instance);
+    hell_Print("minubooffsetalignment: %d\n", props->limits.minUniformBufferOffsetAlignment);
+    assert(sizeof(Camera) % props->limits.minUniformBufferOffsetAlignment == 0);
     renderer->cameraUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(Camera), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_V_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->cameraUniform.elem[0] = renderer->cameraUniform.buffer.hostData;
     renderer->cameraUniform.elem[1] = (Camera*)renderer->cameraUniform.buffer.hostData + 1;
@@ -165,7 +198,7 @@ initCameraUniform(Shiv_Renderer* renderer, Obdn_Memory* memory)
         .dstSet = renderer->descriptorSet,
         .dstBinding = 0,
         .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
         .pBufferInfo = &bi,
     };
 
@@ -183,7 +216,7 @@ updateCamera(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 #define MAX_TEXTURE_COUNT 16
 
 void
-shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, 
+shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire* grim,
                     VkImageLayout finalColorLayout, VkImageLayout finalDepthLayout,
                     uint32_t fbCount, const Obdn_Framebuffer fbs[fbCount], Shiv_Renderer* shiv)
 {
@@ -201,7 +234,7 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
     createDescriptorSetLayout(shiv->device, MAX_TEXTURE_COUNT, &shiv->descriptorSetLayout);
     createPipelineLayout(shiv->device, &shiv->descriptorSetLayout, &shiv->pipelineLayout);
     createPipelines(shiv, NULL);
-    obdn_CreateDescriptorPool(shiv->device, 1, MAX_TEXTURE_COUNT, 1, 1, 1, 1, &shiv->descriptorPool);
+    obdn_CreateDescriptorPool(shiv->device, 1, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0, &shiv->descriptorPool);
     obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1, &shiv->descriptorSetLayout, &shiv->descriptorSet);
     for (int i = 0; i < fbCount; i++)
     {
@@ -212,6 +245,10 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
         shiv->renderCommands[i] = obdn_CreateCommand(shiv->instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
     }
     initCameraUniform(shiv, memory);
+
+    shiv->grim = grim;
+
+    hell_AddCommand(grim, "drawmode", changeDrawMode, shiv);
 }
 
 VkSemaphore
@@ -238,7 +275,6 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
 
     if (renderer->cameraUniform.semaphore)
     {
-        hell_Print("Updating camera...\n");
         updateCamera(renderer, scene, fbi);
         renderer->cameraUniform.semaphore--;
     }
@@ -255,11 +291,12 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
                                        renderer->framebuffers[fbi], width,
                                        height, 0.0, 0.1, 0.2, 1.0);
 
+    uint32_t uboOffset = sizeof(Camera) * fbi;
     vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             renderer->pipelineLayout, 0, 1,
-                            &renderer->descriptorSet, 0, NULL);
+                            &renderer->descriptorSet, 1, &uboOffset);
 
-    vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer->graphicsPipelines[PIPELINE_BASIC]);
+    vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer->graphicsPipelines[renderer->curPipeline]);
 
     obdn_DrawGeo(cmdbuf, &scene->prims[0].geo);
 
