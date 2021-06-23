@@ -35,7 +35,6 @@ typedef struct {
 
 typedef struct Shiv_Renderer {
     Obdn_Instance*        instance;
-    Hell_Grimoire*        grim;
     ResourceSwapchain     cameraUniform;
     PipelineID            curPipeline;
     VkPipeline            graphicsPipelines[PIPELINE_COUNT];
@@ -51,10 +50,10 @@ typedef struct Shiv_Renderer {
     VkDevice              device;
 } Shiv_Renderer;
 
-static void changeDrawMode(void* data)
+static void changeDrawMode(const Hell_Grimoire* grim, void* data)
 {
     Shiv_Renderer* renderer = (Shiv_Renderer*)data;
-    const char* arg = hell_GetArg(renderer->grim, 1);
+    const char* arg = hell_GetArg(grim, 1);
     if (strcmp(arg, "wireframe") == 0) 
         renderer->curPipeline = PIPELINE_WIREFRAME;
     else if (strcmp(arg, "basic") == 0)
@@ -209,8 +208,8 @@ static void
 updateCamera(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 {
     Camera* cam = (Camera*)renderer->cameraUniform.elem[index];
-    cam->view = scene->camera.view;
-    cam->proj = scene->camera.proj;
+    cam->view = obdn_GetCameraView(scene);
+    cam->proj = obdn_GetCameraProjection(scene);
 }
 
 #define MAX_TEXTURE_COUNT 16
@@ -246,8 +245,6 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire*
     }
     initCameraUniform(shiv, memory);
 
-    shiv->grim = grim;
-
     hell_AddCommand(grim, "drawmode", changeDrawMode, shiv);
 }
 
@@ -255,8 +252,7 @@ VkSemaphore
 shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebuffer* fb, uint32_t waitCount,
         VkSemaphore waitSemephores[waitCount])
 {
-    assert(scene->primCount > 0);
-    assert(scene->prims);
+    assert(obdn_GetPrimCount(scene));
     // must create framebuffers or find a cached one
     const uint32_t fbi = fb->index;
     const uint32_t width = fb->width;
@@ -268,7 +264,8 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
         createFramebuffer(renderer, fb);
     }
 
-    if (scene->dirt & OBDN_SCENE_CAMERA_VIEW_BIT || scene->dirt & OBDN_SCENE_CAMERA_PROJ_BIT)
+    Obdn_SceneDirtyFlags dirt = obdn_GetSceneDirt(scene);
+    if (dirt & OBDN_SCENE_CAMERA_VIEW_BIT || dirt & OBDN_SCENE_CAMERA_PROJ_BIT)
     {
         renderer->cameraUniform.semaphore = 2;
     }
@@ -298,7 +295,12 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer->graphicsPipelines[renderer->curPipeline]);
 
-    obdn_DrawGeo(cmdbuf, &scene->prims[0].geo);
+    u32 primCount = obdn_GetPrimCount(scene);
+    for (int i = 0; i < primCount; i++)
+    {
+        const Obdn_Primitive* prim = obdn_GetPrimitive(scene, i);
+        obdn_DrawGeo(cmdbuf, &prim->geo);
+    }
 
     obdn_CmdEndRenderPass(cmdbuf);
     obdn_EndCommandBuffer(cmdbuf);

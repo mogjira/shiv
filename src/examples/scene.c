@@ -30,6 +30,12 @@ static int windowHeight = WHEIGHT;
 
 #define TARGET_RENDER_INTERVAL 10000 // render every 30 ms
 
+void addprim(const Hell_Grimoire* grim, void* scenedata)
+{
+    Obdn_Scene* scene = (Obdn_Scene*)scenedata;
+    obdn_SceneAddCube(scene, COAL_MAT4_IDENT, NULL_MATERIAL, true);
+}
+
 bool handleWindowResizeEvent(const Hell_Event* ev, void* data)
 {
     windowWidth= hell_GetWindowResizeWidth(ev);
@@ -128,6 +134,7 @@ int main(int argc, char *argv[])
                         obdn_GetSwapchainFramebufferCount(swapchain),
                         obdn_GetSwapchainFramebuffers(swapchain), renderer);
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
+    hell_AddCommand(grimoire, "addprim", addprim, scene);
     hell_Loop(hellmouth);
     return 0;
 }
