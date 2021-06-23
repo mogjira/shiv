@@ -2,7 +2,7 @@
 #define SHIV_H
 
 #include <obsidian/common.h>
-#include <obsidian/s_scene.h>
+#include <obsidian/scene.h>
 #include <obsidian/framebuffer.h>
 #include <hell/cmd.h>
 

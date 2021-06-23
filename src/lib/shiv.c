@@ -1,6 +1,6 @@
 #include <obsidian/common.h>
-#include <obsidian/r_pipeline.h>
-#include <obsidian/r_renderpass.h>
+#include <obsidian/pipeline.h>
+#include <obsidian/renderpass.h>
 #include <obsidian/framebuffer.h>
 #include <hell/len.h>
 #include <hell/hell.h>

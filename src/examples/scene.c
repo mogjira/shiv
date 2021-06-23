@@ -33,7 +33,9 @@ static int windowHeight = WHEIGHT;
 void addprim(const Hell_Grimoire* grim, void* scenedata)
 {
     Obdn_Scene* scene = (Obdn_Scene*)scenedata;
-    obdn_SceneAddCube(scene, COAL_MAT4_IDENT, NULL_MATERIAL, true);
+    Obdn_TextureHandle tex = obdn_LoadTexture(scene, "/home/michaelb/pictures/skull.jpg", 4);
+    Obdn_MaterialHandle mat = obdn_SceneCreateMaterial(scene, (Vec3){1, 1, 1}, 0.3, tex, NULL_TEXTURE, NULL_TEXTURE);
+    obdn_SceneAddCube(scene, COAL_MAT4_IDENT, mat, true);
 }
 
 bool handleWindowResizeEvent(const Hell_Event* ev, void* data)
