@@ -26,8 +26,9 @@ layout(set = 0, binding = 2) uniform sampler2D textures[];
 void main()
 {
     const Material mat = materials.mat[matId];
+    const vec3 tex = texture(textures[texId], uv).rgb;
     float L = dot(N, vec3(0, 0, 1));
-    vec3 C  = L * vec3(mat.r, mat.g, mat.b);
+    vec3 C  = L * vec3(mat.r * tex.r, mat.g * tex.g, mat.b * tex.b);
     outColor = vec4(C, 1.0);
 }
 

@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     scene = obdn_AllocScene();
     obdn_CreateInstance(true, false, 0, NULL, instance);
     obdn_CreateMemory(instance, 100, 100, 100, 0, 0, memory);
-    obdn_CreateScene(memory, 0.01, 100, scene);
+    obdn_CreateScene(grimoire, memory, 0.01, 100, scene);
     obdn_UpdateCamera_LookAt(scene, (Vec3){0, 0, 5}, (Vec3){0,0,0}, (Vec3){0, 1, 0});
     Obdn_AovInfo depthAov = {.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT,
                              .usageFlags =

@@ -31,4 +31,5 @@ void main()
     outNormal = normalize((camera.view * push.xform * vec4(norm, 0.0)).xyz); // this is fine as long as we only allow uniform scales
     outUv = uvw.st;
     outMatId = push.matId;
+    outTexId = push.texId;
 }
