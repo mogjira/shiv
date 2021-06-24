@@ -3,5 +3,7 @@ author_shaders(shaders
     shiv
     SOURCES 
     basic.vert
-    basic.frag)
+    basic.frag
+    new.vert
+    new.frag)
 

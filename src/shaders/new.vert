@@ -9,6 +9,7 @@ layout(location = 0) out vec3 outWorldPos;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outUv;
 layout(location = 3) out uint outMatId;
+layout(location = 4) out uint outTexId;
 
 layout(set = 0, binding = 0) uniform Camera {
     mat4 view;
@@ -19,6 +20,7 @@ layout(push_constant) uniform PushConstant {
     mat4 xform;
     uint primId;
     uint matId;
+    uint texId;
 } push;
 
 void main()

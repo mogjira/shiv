@@ -33,9 +33,26 @@ typedef struct {
     uint8_t      semaphore;
 } ResourceSwapchain;
 
+// we dont use the Obdn_Material because we want to avoid having to do indirect lookups 
+// in the shader. Obdn_Material contains handles to textures: we want to convert these 
+// into the real texture indices inside the draw function and pass them to the shader 
+// as push constants. to do otherwise would require storing the resource maps in some 
+// storage buffer which is silly.
+typedef struct {
+    float r;
+    float g;
+    float b;
+    float roughness;
+} Material;
+
+typedef struct {
+    Material materials[16];
+} MaterialBlock;
+
 typedef struct Shiv_Renderer {
     Obdn_Instance*        instance;
     ResourceSwapchain     cameraUniform;
+    ResourceSwapchain     materialUniform;
     PipelineID            curPipeline;
     VkPipeline            graphicsPipelines[PIPELINE_COUNT];
     Command               renderCommands[SWAP_IMG_COUNT];
@@ -83,12 +100,12 @@ static void createDescriptorSetLayout(VkDevice device, uint32_t maxTextureCount,
             .descriptorCount = 1,
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
-        },{ // fragment shader whatever
-            .descriptorCount = 1,
-            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+        },{ // materials
+            .descriptorCount = 1, // struct of array
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
         },{ // textures
-            .descriptorCount = maxTextureCount,
+            .descriptorCount = 16, // arbitrary
             .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
             .bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
@@ -106,20 +123,29 @@ static void
 createPipelineLayout(VkDevice device, const VkDescriptorSetLayout* dsetLayout,
                      VkPipelineLayout*            layout)
 {
-    VkPushConstantRange pcrs[] = {
-        {.offset     = 0,
-         .size       = 64, // give 64 bytes for vertex  shader push constant
-         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT},
-        {.offset     = 64,
-         .size       = 64, // give 64 bytes for fragment shader push constant
-         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT}};
+    uint32_t size1 = sizeof(Mat4) + sizeof(uint32_t) * 3; //prim id, material index, texture index
+
+    const VkPushConstantRange pcPrimId = {
+        .offset = 0,
+        .size = size1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+    };
+
+    // light count
+    const VkPushConstantRange pcFrag = {
+        .offset = size1,
+        .size = sizeof(uint32_t),
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+    };
+
+    const VkPushConstantRange ranges[] = {pcPrimId, pcFrag};
 
     VkPipelineLayoutCreateInfo ci = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount         = 1,
         .pSetLayouts            = dsetLayout,
-        .pushConstantRangeCount = LEN(pcrs),
-        .pPushConstantRanges    = pcrs};
+        .pushConstantRangeCount = LEN(ranges),
+        .pPushConstantRanges    = ranges};
 
     vkCreatePipelineLayout(device, &ci, NULL, layout);
 }
@@ -143,8 +169,8 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
-         .vertShader        = SPVDIR"/basic.vert.spv",
-         .fragShader        = SPVDIR"/basic.frag.spv"
+         .vertShader        = SPVDIR"/new.vert.spv",
+         .fragShader        = SPVDIR"/new.frag.spv"
     },{
         // wireframe 
          .renderPass        = instance->renderPass,
@@ -156,8 +182,8 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
-         .vertShader        = SPVDIR"/basic.vert.spv",
-         .fragShader        = SPVDIR"/basic.frag.spv"
+         .vertShader        = SPVDIR"/new.vert.spv",
+         .fragShader        = SPVDIR"/new.frag.spv"
     }};
 
     assert(LEN(pipeInfos) == PIPELINE_COUNT);
@@ -176,32 +202,51 @@ createFramebuffer(Shiv_Renderer* renderer, const Obdn_Framebuffer* fb)
 
 
 static void
-initCameraUniform(Shiv_Renderer* renderer, Obdn_Memory* memory)
+initUniforms(Shiv_Renderer* renderer, Obdn_Memory* memory)
 {
     const VkPhysicalDeviceProperties* props = obdn_GetPhysicalDeviceProperties(renderer->instance);
-    hell_Print("minubooffsetalignment: %d\n", props->limits.minUniformBufferOffsetAlignment);
     assert(sizeof(Camera) % props->limits.minUniformBufferOffsetAlignment == 0);
+    assert(sizeof(MaterialBlock) % props->limits.minUniformBufferOffsetAlignment == 0);
+
     renderer->cameraUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(Camera), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_V_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->cameraUniform.elem[0] = renderer->cameraUniform.buffer.hostData;
     renderer->cameraUniform.elem[1] = (Camera*)renderer->cameraUniform.buffer.hostData + 1;
 
-    VkDescriptorBufferInfo bi = {
+    renderer->materialUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(MaterialBlock), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_V_MEMORY_HOST_GRAPHICS_TYPE);
+    renderer->materialUniform.elem[0] = renderer->materialUniform.buffer.hostData;
+    renderer->materialUniform.elem[1] = (MaterialBlock*)renderer->materialUniform.buffer.hostData + 1;
+
+    VkDescriptorBufferInfo caminfo = {
         .buffer = renderer->cameraUniform.buffer.buffer,
         .offset = renderer->cameraUniform.buffer.offset,
         .range  = renderer->cameraUniform.buffer.size,
     };
 
-    VkWriteDescriptorSet writes = {
+    VkDescriptorBufferInfo matinfo = {
+        .buffer = renderer->materialUniform.buffer.buffer,
+        .offset = renderer->materialUniform.buffer.offset,
+        .range  = renderer->materialUniform.buffer.size,
+    };
+
+    VkWriteDescriptorSet writes[] = {{
         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
         .dstArrayElement = 0,
         .dstSet = renderer->descriptorSet,
         .dstBinding = 0,
         .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .pBufferInfo = &bi,
-    };
+        .pBufferInfo = &caminfo,
+    },{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstArrayElement = 0,
+        .dstSet = renderer->descriptorSet,
+        .dstBinding = 1,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .pBufferInfo = &matinfo,
+    }};
 
-    vkUpdateDescriptorSets(renderer->device, 1, &writes, 0, NULL);
+    vkUpdateDescriptorSets(renderer->device, LEN(writes), writes, 0, NULL);
 }
 
 static void 
@@ -210,6 +255,21 @@ updateCamera(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
     Camera* cam = (Camera*)renderer->cameraUniform.elem[index];
     cam->view = obdn_GetCameraView(scene);
     cam->proj = obdn_GetCameraProjection(scene);
+}
+
+static void 
+updateMaterialBlock(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
+{
+    MaterialBlock* matblock = (MaterialBlock*)renderer->materialUniform.elem[index];
+    uint32_t count = obdn_SceneGetMaterialCount(scene);
+    Obdn_Material* materials = obdn_SceneGetMaterials(scene);
+    for (int i = 0; i < count; i++)
+    {
+        matblock->materials[i].r = materials[i].color.r;
+        matblock->materials[i].g = materials[i].color.g;
+        matblock->materials[i].b = materials[i].color.b;
+        matblock->materials[i].roughness = materials[i].roughness;
+    }
 }
 
 #define MAX_TEXTURE_COUNT 16
@@ -243,7 +303,7 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire*
     {
         shiv->renderCommands[i] = obdn_CreateCommand(shiv->instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
     }
-    initCameraUniform(shiv, memory);
+    initUniforms(shiv, memory);
 
     hell_AddCommand(grim, "drawmode", changeDrawMode, shiv);
 }
@@ -269,11 +329,20 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
     {
         renderer->cameraUniform.semaphore = 2;
     }
+    if (dirt & OBDN_SCENE_MATERIALS_BIT)
+    {
+        renderer->materialUniform.semaphore = 2;
+    }
 
     if (renderer->cameraUniform.semaphore)
     {
         updateCamera(renderer, scene, fbi);
         renderer->cameraUniform.semaphore--;
+    }
+    if (renderer->materialUniform.semaphore)
+    {
+        updateMaterialBlock(renderer, scene, fbi);
+        renderer->materialUniform.semaphore--;
     }
 
     Obdn_Command* cmd = &renderer->renderCommands[fbi];
@@ -288,10 +357,10 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
                                        renderer->framebuffers[fbi], width,
                                        height, 0.0, 0.1, 0.2, 1.0);
 
-    uint32_t uboOffset = sizeof(Camera) * fbi;
+    uint32_t uboOffsets[] = {sizeof(Camera) * fbi, sizeof(MaterialBlock) * fbi};
     vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             renderer->pipelineLayout, 0, 1,
-                            &renderer->descriptorSet, 1, &uboOffset);
+                            &renderer->descriptorSet, LEN(uboOffsets), uboOffsets);
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, renderer->graphicsPipelines[renderer->curPipeline]);
 
@@ -299,6 +368,16 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
     for (int i = 0; i < primCount; i++)
     {
         const Obdn_Primitive* prim = obdn_GetPrimitive(scene, i);
+        Obdn_Material* mat = obdn_GetMaterial(scene, prim->material);
+        uint32_t primIndex = i;
+        uint32_t matIndex  = obdn_SceneGetMaterialIndex(scene, prim->material);
+        uint32_t texIndex  = obdn_SceneGetTextureIndex(scene, mat->textureAlbedo);
+        Mat4 xform = prim->xform;
+        uint32_t indices[] = {primIndex, matIndex, texIndex};
+        vkCmdPushConstants(cmdbuf, renderer->pipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(xform), &xform);
+        vkCmdPushConstants(cmdbuf, renderer->pipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, sizeof(xform), sizeof(indices), indices);
         obdn_DrawGeo(cmdbuf, &prim->geo);
     }
 
