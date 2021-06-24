@@ -53,6 +53,7 @@ typedef struct Shiv_Renderer {
     Obdn_Instance*        instance;
     ResourceSwapchain     cameraUniform;
     ResourceSwapchain     materialUniform;
+    uint8_t               texSemaphore;
     PipelineID            curPipeline;
     VkPipeline            graphicsPipelines[PIPELINE_COUNT];
     Command               renderCommands[SWAP_IMG_COUNT];
@@ -262,13 +263,43 @@ updateMaterialBlock(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t in
 {
     MaterialBlock* matblock = (MaterialBlock*)renderer->materialUniform.elem[index];
     uint32_t count = obdn_SceneGetMaterialCount(scene);
-    Obdn_Material* materials = obdn_SceneGetMaterials(scene);
+    const Obdn_Material* materials = obdn_SceneGetMaterials(scene);
     for (int i = 0; i < count; i++)
     {
         matblock->materials[i].r = materials[i].color.r;
         matblock->materials[i].g = materials[i].color.g;
         matblock->materials[i].b = materials[i].color.b;
         matblock->materials[i].roughness = materials[i].roughness;
+    }
+}
+
+static void 
+updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
+{
+    uint32_t texCount = obdn_SceneGetTextureCount(scene);
+    const Obdn_Texture* textures = obdn_SceneGetTextures(scene);
+    for (int i = 0; i < texCount; i++)
+    {
+        const Obdn_Image* img = &textures[i].devImage;
+
+        VkDescriptorImageInfo textureInfo = {
+            .imageLayout = img->layout,
+            .imageView   = img->view,
+            .sampler     = img->sampler
+        };
+
+        VkWriteDescriptorSet write = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = NULL,
+            .dstSet = renderer->descriptorSet,
+            .dstBinding = 2,
+            .dstArrayElement = i,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &textureInfo
+        };
+
+        vkUpdateDescriptorSets(renderer->device, 1, &write, 0, NULL);
     }
 }
 
@@ -333,6 +364,12 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
     {
         renderer->materialUniform.semaphore = 2;
     }
+    if (dirt & OBDN_SCENE_TEXTURES_BIT)
+    {
+        // we block until all queues have finished before updating textures
+        // the are not double buffered, so we only need a switch semaphore
+        renderer->texSemaphore = 1;
+    }
 
     if (renderer->cameraUniform.semaphore)
     {
@@ -343,6 +380,17 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
     {
         updateMaterialBlock(renderer, scene, fbi);
         renderer->materialUniform.semaphore--;
+    }
+    if (renderer->texSemaphore)
+    {
+        // textures are handled differently since we cannot just write into a buffer to handle their updates 
+        // we have to actually call vkWriteDescriptorSets(), which means thats we should probably have a separate
+        // double buffered descriptor set specifically for textures (or other shader descriptors that cannot be updated 
+        // via a simple buffer write)
+        // for now, we do the simplest thing which is just block on all vulkan operations before updating.
+        vkDeviceWaitIdle(renderer->device); 
+        updateTextures(renderer, scene, fbi);
+        renderer->texSemaphore--;
     }
 
     Obdn_Command* cmd = &renderer->renderCommands[fbi];

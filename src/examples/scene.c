@@ -32,10 +32,15 @@ static int windowHeight = WHEIGHT;
 
 void addprim(const Hell_Grimoire* grim, void* scenedata)
 {
+    static int x = 0;
     Obdn_Scene* scene = (Obdn_Scene*)scenedata;
+    Coal_Mat4 xform = COAL_MAT4_IDENT;
+    Coal_Vec3 t = {x, 0, 0};
+    xform = coal_Translate_Mat4(t, xform);
     Obdn_TextureHandle tex = obdn_LoadTexture(scene, "/home/michaelb/pictures/skull.jpg", 4);
     Obdn_MaterialHandle mat = obdn_SceneCreateMaterial(scene, (Vec3){1, 1, 1}, 0.3, tex, NULL_TEXTURE, NULL_TEXTURE);
-    obdn_SceneAddCube(scene, COAL_MAT4_IDENT, mat, true);
+    obdn_SceneAddCube(scene, xform, mat, true);
+    x += 1;
 }
 
 bool handleWindowResizeEvent(const Hell_Event* ev, void* data)
