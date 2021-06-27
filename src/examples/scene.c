@@ -118,8 +118,10 @@ int main(int argc, char *argv[])
     hell_CreateWindow(eventQueue, width, height, NULL, window);
     hell_CreateHellmouth(grimoire, eventQueue, console, 1, &window, draw, NULL, hellmouth);
 
-    hell_Subscribe(eventQueue, HELL_EVENT_MASK_WINDOW_BIT, hell_GetWindowID(window), handleWindowResizeEvent, NULL);
-    hell_Subscribe(eventQueue, HELL_EVENT_MASK_MOUSE_BIT, hell_GetWindowID(window), handleMouseEvent, NULL);
+    hell_Subscribe(eventQueue, HELL_EVENT_MASK_WINDOW_BIT,
+                   hell_GetWindowID(window), handleWindowResizeEvent, NULL);
+    hell_Subscribe(eventQueue, HELL_EVENT_MASK_MOUSE_BIT,
+                   hell_GetWindowID(window), handleMouseEvent, NULL);
 
     instance = obdn_AllocInstance();
     memory = obdn_AllocMemory();
@@ -133,7 +135,9 @@ int main(int argc, char *argv[])
                              .usageFlags =
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                              .format = depthFormat};
-    obdn_CreateSwapchain(instance, memory, eventQueue, window, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov, swapchain);
+    obdn_CreateSwapchain(instance, memory, eventQueue, window,
+                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov,
+                         swapchain);
     obdn_LoadPrim(scene, "flip-uv.tnt", COAL_MAT4_IDENT);
     renderer = shiv_AllocRenderer();
     shiv_CreateRenderer(instance, memory, grimoire, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
