@@ -14,6 +14,7 @@ typedef Obdn_DescriptorBinding DescriptorBinding;
 typedef enum {
     PIPELINE_BASIC,
     PIPELINE_WIREFRAME,
+    PIPELINE_NO_TEX,
     PIPELINE_COUNT
 } PipelineID;
 
@@ -56,7 +57,6 @@ typedef struct Shiv_Renderer {
     uint8_t               texSemaphore;
     PipelineID            curPipeline;
     VkPipeline            graphicsPipelines[PIPELINE_COUNT];
-    Command               renderCommands[SWAP_IMG_COUNT];
     VkFramebuffer         framebuffers[SWAP_IMG_COUNT];
     VkDescriptorPool      descriptorPool;
     VkDescriptorSet       descriptorSet;
@@ -76,8 +76,10 @@ static void changeDrawMode(const Hell_Grimoire* grim, void* data)
         renderer->curPipeline = PIPELINE_WIREFRAME;
     else if (strcmp(arg, "basic") == 0)
         renderer->curPipeline = PIPELINE_BASIC;
+    else if (strcmp(arg, "notex") == 0)
+        renderer->curPipeline = PIPELINE_NO_TEX;
     else 
-        hell_Print("Options: wireframe basic\n");
+        hell_Print("Options: wireframe basic notex\n");
 }
 
 static void createRenderPasses(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
@@ -185,6 +187,19 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .pDynamicStates    = dynamicStates,
          .vertShader        = SPVDIR"/new.vert.spv",
          .fragShader        = SPVDIR"/new.frag.spv"
+    },{
+        // notex
+         .renderPass        = instance->renderPass,
+         .layout            = instance->pipelineLayout,
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .polygonMode       = VK_POLYGON_MODE_FILL,
+         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
+         .dynamicStateCount = LEN(dynamicStates),
+         .pDynamicStates    = dynamicStates,
+         .vertShader        = SPVDIR"/new.vert.spv",
+         .fragShader        = SPVDIR"/notex.frag.spv"
     }};
 
     assert(LEN(pipeInfos) == PIPELINE_COUNT);
@@ -330,18 +345,14 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire*
     {
         createFramebuffer(shiv, &fbs[i]);
     }
-    for (int i = 0; i < fbCount; i++)
-    {
-        shiv->renderCommands[i] = obdn_CreateCommand(shiv->instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
-    }
     initUniforms(shiv, memory);
 
     hell_AddCommand(grim, "drawmode", changeDrawMode, shiv);
 }
 
-VkSemaphore
-shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebuffer* fb, uint32_t waitCount,
-        VkSemaphore waitSemephores[waitCount])
+void
+shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
+            const Obdn_Framebuffer* fb, VkCommandBuffer cmdbuf)
 {
     assert(obdn_GetPrimCount(scene));
     // must create framebuffers or find a cached one
@@ -393,12 +404,6 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
         renderer->texSemaphore--;
     }
 
-    Obdn_Command* cmd = &renderer->renderCommands[fbi];
-    obdn_WaitForFence(renderer->device, &cmd->fence);
-    obdn_ResetCommand(cmd);
-    VkCommandBuffer cmdbuf = cmd->buffer;
-    obdn_BeginCommandBuffer(cmdbuf);
-
     obdn_CmdSetViewportScissorFull(cmdbuf, width, height);
 
     obdn_CmdBeginRenderPass_ColorDepth(cmdbuf, renderer->renderPass,
@@ -430,14 +435,6 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene, const Obdn_Framebu
     }
 
     obdn_CmdEndRenderPass(cmdbuf);
-    obdn_EndCommandBuffer(cmdbuf);
-
-    obdn_SubmitGraphicsCommand(
-        renderer->instance, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, waitCount,
-        waitSemephores, 1, &cmd->semaphore,
-        cmd->fence, cmdbuf);
-
-    return cmd->semaphore;
 }
 
 void 

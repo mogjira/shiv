@@ -16,6 +16,7 @@ Obdn_Scene*      scene;
 
 Shiv_Renderer*   renderer;
 
+Obdn_Command commands[2];
 
 const VkFormat colorFormat = VK_FORMAT_R8G8B8A8_UNORM;
 const VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
@@ -97,8 +98,16 @@ void draw(void)
 
     VkFence fence = VK_NULL_HANDLE;
     const Obdn_Framebuffer* fb = obdn_AcquireSwapchainFramebuffer(swapchain, &fence, &acquireSemaphore);
-    VkSemaphore s = shiv_Render(renderer, scene, fb, 1, &acquireSemaphore);
-    obdn_PresentFrame(swapchain, 1, &s);
+    Obdn_Command cmd = commands[frameCounter % 2];
+    obdn_WaitForFence(obdn_GetDevice(instance), &cmd.fence);
+    obdn_ResetCommand(&cmd);
+    obdn_BeginCommandBuffer(cmd.buffer);
+    shiv_Render(renderer, scene, fb, cmd.buffer);
+    obdn_EndCommandBuffer(cmd.buffer);
+    obdn_SubmitGraphicsCommand(
+        instance, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 1,
+        &acquireSemaphore, 1, &cmd.semaphore, cmd.fence, cmd.buffer);
+    obdn_PresentFrame(swapchain, 1, &cmd.semaphore);
 
     obdn_SceneClearDirt(scene);
 }
@@ -146,6 +155,9 @@ int main(int argc, char *argv[])
                         obdn_GetSwapchainFramebuffers(swapchain), renderer);
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
     hell_AddCommand(grimoire, "addprim", addprim, scene);
+
+    commands[0] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
+    commands[1] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
     hell_Loop(hellmouth);
     return 0;
 }

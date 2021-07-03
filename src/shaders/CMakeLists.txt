@@ -5,5 +5,6 @@ author_shaders(shaders
     basic.vert
     basic.frag
     new.vert
-    new.frag)
+    new.frag
+    notex.frag)
 
