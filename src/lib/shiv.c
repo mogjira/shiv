@@ -347,7 +347,10 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire*
     }
     initUniforms(shiv, memory);
 
-    hell_AddCommand(grim, "drawmode", changeDrawMode, shiv);
+    if (grim)
+    {
+        hell_AddCommand(grim, "drawmode", changeDrawMode, shiv);
+    }
 }
 
 void

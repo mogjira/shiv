@@ -7,3 +7,9 @@ author_library(shiv
     SOURCES shiv.c
     PUBLIC_HEADERS shiv.h
     DEPS Obsidian::Obsidian Hell::Hell)
+
+author_library(shivObj
+    TYPE OBJECT
+    EXPORT_NAME ShivObj
+    SOURCES shiv.c
+    DEPS Obsidian::ObsidianObj Hell::HellObj)
