@@ -16,4 +16,7 @@ void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                                    bool openglCompatible, Shiv_Renderer* shiv);
 void shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
             const Obdn_Framebuffer* fb, VkCommandBuffer cmdbuf);
+
+void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg);
+
 #endif /* end of include guard: SHIV_H */

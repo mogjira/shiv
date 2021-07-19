@@ -69,10 +69,8 @@ typedef struct Shiv_Renderer {
     VkDevice              device;
 } Shiv_Renderer;
 
-static void changeDrawMode(const Hell_Grimoire* grim, void* data)
+void setDrawMode(Shiv_Renderer* renderer, const char* arg)
 {
-    Shiv_Renderer* renderer = (Shiv_Renderer*)data;
-    const char* arg = hell_GetArg(grim, 1);
     if (strcmp(arg, "wireframe") == 0) 
         renderer->curPipeline = PIPELINE_WIREFRAME;
     else if (strcmp(arg, "basic") == 0)
@@ -83,6 +81,13 @@ static void changeDrawMode(const Hell_Grimoire* grim, void* data)
         renderer->curPipeline = PIPELINE_DEBUG;
     else 
         hell_Print("Options: wireframe basic notex\n");
+}
+
+static void changeDrawMode(const Hell_Grimoire* grim, void* data)
+{
+    Shiv_Renderer* renderer = (Shiv_Renderer*)data;
+    const char* arg = hell_GetArg(grim, 1);
+    setDrawMode(renderer, arg);
 }
 
 static void createRenderPasses(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
@@ -429,11 +434,11 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
     Coal_Mat4 view = obdn_GetCameraView(scene);
     Coal_Mat4 proj = obdn_GetCameraProjection(scene);
 
-    hell_Print("View:\n");
-    coal_PrintMat4(view);
-    hell_Print("Proj:\n");
-    coal_PrintMat4(proj);
-    hell_Print("\n");
+    //hell_Print("View:\n");
+    //coal_PrintMat4(view);
+    //hell_Print("Proj:\n");
+    //coal_PrintMat4(proj);
+    //hell_Print("\n");
 
 
     obdn_CmdSetViewportScissorFull(cmdbuf, width, height);
@@ -453,7 +458,7 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
     for (int i = 0; i < primCount; i++)
     {
         const Obdn_Primitive* prim = obdn_GetPrimitive(scene, i);
-        hell_Print("Prim vert count %d\n index count %d\n", prim->geo.vertexCount, prim->geo.indexCount);
+        //hell_Print("Prim vert count %d\n index count %d\n", prim->geo.vertexCount, prim->geo.indexCount);
         Obdn_Material* mat = obdn_GetMaterial(scene, prim->material);
         uint32_t primIndex = i;
         uint32_t matIndex  = obdn_SceneGetMaterialIndex(scene, prim->material);
