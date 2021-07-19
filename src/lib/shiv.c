@@ -426,6 +426,16 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
         renderer->texSemaphore--;
     }
 
+    Coal_Mat4 view = obdn_GetCameraView(scene);
+    Coal_Mat4 proj = obdn_GetCameraProjection(scene);
+
+    hell_Print("View:\n");
+    coal_PrintMat4(view);
+    hell_Print("Proj:\n");
+    coal_PrintMat4(proj);
+    hell_Print("\n");
+
+
     obdn_CmdSetViewportScissorFull(cmdbuf, width, height);
 
     obdn_CmdBeginRenderPass_ColorDepth(cmdbuf, renderer->renderPass,
@@ -443,6 +453,7 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
     for (int i = 0; i < primCount; i++)
     {
         const Obdn_Primitive* prim = obdn_GetPrimitive(scene, i);
+        hell_Print("Prim vert count %d\n index count %d\n", prim->geo.vertexCount, prim->geo.indexCount);
         Obdn_Material* mat = obdn_GetMaterial(scene, prim->material);
         uint32_t primIndex = i;
         uint32_t matIndex  = obdn_SceneGetMaterialIndex(scene, prim->material);
