@@ -7,5 +7,6 @@ author_shaders(shaders
     new.vert
     new.frag
     notex.frag
-    debug.frag)
+    debug.frag
+    opengl.vert)
 

@@ -157,12 +157,15 @@ createPipelineLayout(VkDevice device, const VkDescriptorSetLayout* dsetLayout,
 }
 
 static void
-createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
+createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCompatible)
 {
     Obdn_GeoAttributeSize attrSizes[3] = {12, 12, 8};
 
     VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
                                       VK_DYNAMIC_STATE_SCISSOR};
+
+    char* vertshader =
+        openglCompatible ? SPVDIR "/opengl.vert.spv" : SPVDIR "/new.vert.spv";
 
     const Obdn_GraphicsPipelineInfo pipeInfos[] = {{
         // basic
@@ -175,7 +178,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
-         .vertShader        = SPVDIR"/new.vert.spv",
+         .vertShader        = vertshader,
          .fragShader        = SPVDIR"/new.frag.spv"
     },{
         // wireframe 
@@ -188,7 +191,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
-         .vertShader        = SPVDIR"/new.vert.spv",
+         .vertShader        = vertshader,
          .fragShader        = SPVDIR"/new.frag.spv"
     },{
         // notex
@@ -201,7 +204,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
-         .vertShader        = SPVDIR"/new.vert.spv",
+         .vertShader        = vertshader,
          .fragShader        = SPVDIR"/notex.frag.spv"
     },{
         // debug
@@ -214,7 +217,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
          .pDynamicStates    = dynamicStates,
-         .vertShader        = SPVDIR"/new.vert.spv",
+         .vertShader        = vertshader,
          .fragShader        = SPVDIR"/debug.frag.spv"
     }};
 
@@ -339,7 +342,7 @@ updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 void
 shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire* grim,
                     VkImageLayout finalColorLayout, VkImageLayout finalDepthLayout,
-                    uint32_t fbCount, const Obdn_Framebuffer fbs[fbCount], Shiv_Renderer* shiv)
+                    uint32_t fbCount, const Obdn_Framebuffer fbs[fbCount], bool openglCompatible, Shiv_Renderer* shiv)
 {
     memset(shiv, 0, sizeof(Shiv_Renderer));
     assert(fbCount == SWAP_IMG_COUNT);
@@ -354,7 +357,7 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire*
                         &shiv->renderPass);
     createDescriptorSetLayout(shiv->device, MAX_TEXTURE_COUNT, &shiv->descriptorSetLayout);
     createPipelineLayout(shiv->device, &shiv->descriptorSetLayout, &shiv->pipelineLayout);
-    createPipelines(shiv, NULL);
+    createPipelines(shiv, NULL, openglCompatible);
     obdn_CreateDescriptorPool(shiv->device, 1, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0, &shiv->descriptorPool);
     obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1, &shiv->descriptorSetLayout, &shiv->descriptorSet);
     for (int i = 0; i < fbCount; i++)

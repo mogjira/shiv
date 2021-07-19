@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     shiv_CreateRenderer(instance, memory, grimoire, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                         obdn_GetSwapchainFramebufferCount(swapchain),
-                        obdn_GetSwapchainFramebuffers(swapchain), renderer);
+                        obdn_GetSwapchainFramebuffers(swapchain), false, renderer);
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
     hell_AddCommand(grimoire, "addprim", addprim, scene);
 

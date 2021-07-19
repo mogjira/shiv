@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
     shiv_CreateRenderer(instance, memory, grimoire, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                         obdn_GetSwapchainFramebufferCount(swapchain),
-                        obdn_GetSwapchainFramebuffers(swapchain), renderer);
+                        obdn_GetSwapchainFramebuffers(swapchain), true, renderer);
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
     commands[0] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
     commands[1] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
