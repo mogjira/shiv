@@ -15,6 +15,7 @@ typedef enum {
     PIPELINE_BASIC,
     PIPELINE_WIREFRAME,
     PIPELINE_NO_TEX,
+    PIPELINE_DEBUG,
     PIPELINE_COUNT
 } PipelineID;
 
@@ -78,6 +79,8 @@ static void changeDrawMode(const Hell_Grimoire* grim, void* data)
         renderer->curPipeline = PIPELINE_BASIC;
     else if (strcmp(arg, "notex") == 0)
         renderer->curPipeline = PIPELINE_NO_TEX;
+    else if (strcmp(arg, "debug") == 0)
+        renderer->curPipeline = PIPELINE_DEBUG;
     else 
         hell_Print("Options: wireframe basic notex\n");
 }
@@ -200,6 +203,19 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath)
          .pDynamicStates    = dynamicStates,
          .vertShader        = SPVDIR"/new.vert.spv",
          .fragShader        = SPVDIR"/notex.frag.spv"
+    },{
+        // debug
+         .renderPass        = instance->renderPass,
+         .layout            = instance->pipelineLayout,
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .polygonMode       = VK_POLYGON_MODE_FILL,
+         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
+         .dynamicStateCount = LEN(dynamicStates),
+         .pDynamicStates    = dynamicStates,
+         .vertShader        = SPVDIR"/new.vert.spv",
+         .fragShader        = SPVDIR"/debug.frag.spv"
     }};
 
     assert(LEN(pipeInfos) == PIPELINE_COUNT);
