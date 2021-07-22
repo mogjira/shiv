@@ -5,6 +5,7 @@
 #include <hell/len.h>
 #include <hell/hell.h>
 #include <string.h>
+#include "shiv.h"
 
 typedef Obdn_V_BufferRegion      BufferRegion;
 typedef Obdn_V_Command           Command;
@@ -66,6 +67,7 @@ typedef struct Shiv_Renderer {
     VkFormat              colorFormat;
     VkFormat              depthFormat;
     VkRenderPass          renderPass;
+    Vec4                  clearColor;
     VkDevice              device;
 } Shiv_Renderer;
 
@@ -344,10 +346,11 @@ updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 
 #define MAX_TEXTURE_COUNT 16
 
-void
-shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire* grim,
-                    VkImageLayout finalColorLayout, VkImageLayout finalDepthLayout,
-                    uint32_t fbCount, const Obdn_Framebuffer fbs[fbCount], bool openglCompatible, Shiv_Renderer* shiv)
+void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
+                                   VkImageLayout finalColorLayout,
+                                   VkImageLayout finalDepthLayout, uint32_t fbCount,
+                                   const Obdn_Framebuffer fbs[fbCount],
+                                   const Shiv_Parms* parms, Shiv_Renderer* shiv)
 {
     memset(shiv, 0, sizeof(Shiv_Renderer));
     assert(fbCount == SWAP_IMG_COUNT);
@@ -362,7 +365,7 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire*
                         &shiv->renderPass);
     createDescriptorSetLayout(shiv->device, MAX_TEXTURE_COUNT, &shiv->descriptorSetLayout);
     createPipelineLayout(shiv->device, &shiv->descriptorSetLayout, &shiv->pipelineLayout);
-    createPipelines(shiv, NULL, openglCompatible);
+    createPipelines(shiv, NULL, parms->openglCompatible);
     obdn_CreateDescriptorPool(shiv->device, 1, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0, &shiv->descriptorPool);
     obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1, &shiv->descriptorSetLayout, &shiv->descriptorSet);
     for (int i = 0; i < fbCount; i++)
@@ -371,10 +374,11 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory, Hell_Grimoire*
     }
     initUniforms(shiv, memory);
 
-    if (grim)
+    if (parms->grim)
     {
-        hell_AddCommand(grim, "drawmode", changeDrawMode, shiv);
+        hell_AddCommand(parms->grim, "drawmode", changeDrawMode, shiv);
     }
+    shiv->clearColor = parms->clearColor;
 }
 
 void
@@ -445,7 +449,11 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
 
     obdn_CmdBeginRenderPass_ColorDepth(cmdbuf, renderer->renderPass,
                                        renderer->framebuffers[fbi], width,
-                                       height, 0.0, 0.1, 0.2, 1.0);
+                                       height, 
+                                       renderer->clearColor.r,
+                                       renderer->clearColor.g,
+                                       renderer->clearColor.b,
+                                       renderer->clearColor.a);
 
     uint32_t uboOffsets[] = {sizeof(Camera) * fbi, sizeof(MaterialBlock) * fbi};
     vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,

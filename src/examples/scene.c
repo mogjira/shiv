@@ -149,10 +149,13 @@ int main(int argc, char *argv[])
                          swapchain);
     obdn_LoadPrim(scene, "flip-uv.tnt", COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
     renderer = shiv_AllocRenderer();
-    shiv_CreateRenderer(instance, memory, grimoire, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    Shiv_Parms sp = {
+        .grim = grimoire
+    };
+    shiv_CreateRenderer(instance, memory, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                         obdn_GetSwapchainFramebufferCount(swapchain),
-                        obdn_GetSwapchainFramebuffers(swapchain), false, renderer);
+                        obdn_GetSwapchainFramebuffers(swapchain), &sp, renderer);
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
     hell_AddCommand(grimoire, "addprim", addprim, scene);
 

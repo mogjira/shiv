@@ -5,15 +5,22 @@
 #include <obsidian/scene.h>
 #include <obsidian/framebuffer.h>
 #include <hell/cmd.h>
+#include <coal/coal.h>
 
 typedef struct Shiv_Renderer Shiv_Renderer;
 
+typedef struct {
+    Hell_Grimoire*    grim;
+    _Bool             openglCompatible;
+    Vec4              clearColor;
+} Shiv_Parms;
+
 Shiv_Renderer* shiv_AllocRenderer(void);
 void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
-                                   Hell_Grimoire* grim, VkImageLayout finalColorLayout,
+                                   VkImageLayout finalColorLayout,
                                    VkImageLayout finalDepthLayout, uint32_t fbCount,
                                    const Obdn_Framebuffer fbs[fbCount],
-                                   bool openglCompatible, Shiv_Renderer* shiv);
+                                   const Shiv_Parms* parms, Shiv_Renderer* shiv);
 void shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
             const Obdn_Framebuffer* fb, VkCommandBuffer cmdbuf);
 
