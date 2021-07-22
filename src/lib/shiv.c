@@ -17,6 +17,7 @@ typedef enum {
     PIPELINE_WIREFRAME,
     PIPELINE_NO_TEX,
     PIPELINE_DEBUG,
+    PIPELINE_UVGRID,
     PIPELINE_COUNT
 } PipelineID;
 
@@ -71,7 +72,7 @@ typedef struct Shiv_Renderer {
     VkDevice              device;
 } Shiv_Renderer;
 
-void setDrawMode(Shiv_Renderer* renderer, const char* arg)
+void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg)
 {
     if (strcmp(arg, "wireframe") == 0) 
         renderer->curPipeline = PIPELINE_WIREFRAME;
@@ -81,6 +82,8 @@ void setDrawMode(Shiv_Renderer* renderer, const char* arg)
         renderer->curPipeline = PIPELINE_NO_TEX;
     else if (strcmp(arg, "debug") == 0)
         renderer->curPipeline = PIPELINE_DEBUG;
+    else if (strcmp(arg, "uvgrid") == 0)
+        renderer->curPipeline = PIPELINE_UVGRID;
     else 
         hell_Print("Options: wireframe basic notex\n");
 }
@@ -89,7 +92,7 @@ static void changeDrawMode(const Hell_Grimoire* grim, void* data)
 {
     Shiv_Renderer* renderer = (Shiv_Renderer*)data;
     const char* arg = hell_GetArg(grim, 1);
-    setDrawMode(renderer, arg);
+    shiv_SetDrawMode(renderer, arg);
 }
 
 static void createRenderPasses(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
@@ -226,6 +229,19 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .pDynamicStates    = dynamicStates,
          .vertShader        = vertshader,
          .fragShader        = SPVDIR"/debug.frag.spv"
+    },{
+        // grid uv
+         .renderPass        = instance->renderPass,
+         .layout            = instance->pipelineLayout,
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .polygonMode       = VK_POLYGON_MODE_FILL,
+         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
+         .dynamicStateCount = LEN(dynamicStates),
+         .pDynamicStates    = dynamicStates,
+         .vertShader        = vertshader,
+         .fragShader        = SPVDIR"/uvgrid.frag.spv"
     }};
 
     assert(LEN(pipeInfos) == PIPELINE_COUNT);
