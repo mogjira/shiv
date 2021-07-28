@@ -21,8 +21,15 @@ typedef enum {
     PIPELINE_COUNT
 } PipelineID;
 
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
 #define SWAP_IMG_COUNT 2
+#ifdef SPVDIR_PREFIX 
+#define SPVDIR SPVDIR_PREFIX "/shiv"
+#else
 #define SPVDIR "shiv"
+#endif
 
 _Static_assert(SWAP_IMG_COUNT == 2, "SWAP_IMG_COUNT must be 2 for now");
 
