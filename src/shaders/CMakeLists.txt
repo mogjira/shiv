@@ -1,6 +1,7 @@
 include(author_shaders)
 author_shaders(shaders 
     shiv
+    shiv_spvs
     SOURCES 
     basic.vert
     basic.frag
