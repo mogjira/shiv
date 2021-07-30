@@ -1,6 +1,6 @@
 #include <hell/hell.h>
 #include <obsidian/obsidian.h>
-#include "shiv.h"
+#include "shiv/shiv.h"
 
 Hell_Hellmouth*  hellmouth;
 Hell_Grimoire*   grimoire;
