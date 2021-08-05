@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.17)
 
 project(Shiv VERSION 0.1.0)
 
+option(SHIV_SKIP_EXAMPLES "Skip building examples" OFF)
+
 include(FetchContent)
 FetchContent_Declare(
     cmake-common
@@ -24,4 +26,6 @@ FetchContent_MakeAvailable(obsidian)
 
 add_subdirectory(src/lib)
 add_subdirectory(src/shaders)
-add_subdirectory(src/examples)
+if(NOT ${SHIV_SKIP_EXAMPLES})
+    add_subdirectory(src/examples)
+endif()
