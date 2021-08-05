@@ -121,7 +121,15 @@ int main(int argc, char *argv[])
     memory = obdn_AllocMemory();
     swapchain = obdn_AllocSwapchain();
     scene = obdn_AllocScene();
-    obdn_CreateInstance(true, false, 0, NULL, instance);
+    const char* extnames[] = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+        VK_KHR_XCB_SURFACE_EXTENSION_NAME
+    };
+    Obdn_InstanceParms ip = {
+        .enabledInstanceExentensionCount = 2,
+        .ppEnabledInstanceExtensionNames = extnames
+    };
+    obdn_CreateInstance(&ip, instance);
     obdn_CreateMemory(instance, 100, 100, 100, 0, 0, memory);
     obdn_CreateScene(grimoire, memory, 0.01, 100, scene);
     obdn_UpdateCamera_LookAt(scene, (Vec3){0, 0, 5}, (Vec3){0,0,0}, (Vec3){0, 1, 0});

@@ -11,5 +11,3 @@ author_shaders(shaders
     debug.frag
     uvgrid.frag
     opengl.vert)
-
-message("shivspvs: ${shiv_spvs}")
