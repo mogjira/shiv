@@ -174,7 +174,8 @@ createPipelineLayout(VkDevice device, const VkDescriptorSetLayout* dsetLayout,
 }
 
 static void
-createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCompatible)
+createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCompatible, 
+        bool countClockwise)
 {
     Obdn_GeoAttributeSize attrSizes[3] = {12, 12, 8};
 
@@ -184,13 +185,16 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
     char* vertshader =
         openglCompatible ? SPVDIR "/opengl.vert.spv" : SPVDIR "/new.vert.spv";
 
+    VkFrontFace frontFace = countClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+
+
     const Obdn_GraphicsPipelineInfo pipeInfos[] = {{
         // basic
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
-         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .frontFace         = frontFace,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -203,7 +207,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .layout            = instance->pipelineLayout,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_LINE,
-         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .frontFace         = frontFace,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -216,7 +220,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .layout            = instance->pipelineLayout,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
-         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .frontFace         = frontFace,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -229,7 +233,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .layout            = instance->pipelineLayout,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
-         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .frontFace         = frontFace,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -242,7 +246,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .layout            = instance->pipelineLayout,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
-         .frontFace         = VK_FRONT_FACE_CLOCKWISE,
+         .frontFace         = frontFace,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -388,7 +392,7 @@ void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                         &shiv->renderPass);
     createDescriptorSetLayout(shiv->device, MAX_TEXTURE_COUNT, &shiv->descriptorSetLayout);
     createPipelineLayout(shiv->device, &shiv->descriptorSetLayout, &shiv->pipelineLayout);
-    createPipelines(shiv, NULL, parms->openglCompatible);
+    createPipelines(shiv, NULL, parms->openglCompatible, parms->CCWWindingOrder);
     obdn_CreateDescriptorPool(shiv->device, 1, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0, &shiv->descriptorPool);
     obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1, &shiv->descriptorSetLayout, &shiv->descriptorSet);
     for (int i = 0; i < fbCount; i++)
@@ -458,16 +462,6 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
         renderer->texSemaphore--;
     }
 
-    Coal_Mat4 view = obdn_GetCameraView(scene);
-    Coal_Mat4 proj = obdn_GetCameraProjection(scene);
-
-    //hell_Print("View:\n");
-    //coal_PrintMat4(view);
-    //hell_Print("Proj:\n");
-    //coal_PrintMat4(proj);
-    //hell_Print("\n");
-
-
     obdn_CmdSetViewportScissorFull(cmdbuf, width, height);
 
     obdn_CmdBeginRenderPass_ColorDepth(cmdbuf, renderer->renderPass,
@@ -494,7 +488,7 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
         uint32_t primIndex = i;
         uint32_t matIndex  = obdn_SceneGetMaterialIndex(scene, prim->material);
         uint32_t texIndex  = obdn_SceneGetTextureIndex(scene, mat->textureAlbedo);
-        Mat4 xform = prim->xform;
+        Mat4 xform = prim->xform; 
         uint32_t indices[] = {primIndex, matIndex, texIndex};
         vkCmdPushConstants(cmdbuf, renderer->pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(xform), &xform);

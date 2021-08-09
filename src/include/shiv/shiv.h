@@ -13,6 +13,7 @@ typedef struct {
     Hell_Grimoire*    grim;
     _Bool             openglCompatible;
     Vec4              clearColor;
+    bool              CCWWindingOrder;
 } Shiv_Parms;
 
 Shiv_Renderer* shiv_AllocRenderer(void);
