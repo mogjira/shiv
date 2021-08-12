@@ -19,7 +19,7 @@ Shiv_Renderer* shiv_AllocRenderer(void);
 void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                                    VkImageLayout finalColorLayout,
                                    VkImageLayout finalDepthLayout, uint32_t fbCount,
-                                   const Obdn_Framebuffer fbs[fbCount],
+                                   const Obdn_Framebuffer fbs[/*fbCount*/],
                                    const Shiv_Parms* parms, Shiv_Renderer* shiv);
 void shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
             const Obdn_Framebuffer* fb, VkCommandBuffer cmdbuf);

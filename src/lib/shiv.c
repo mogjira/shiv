@@ -372,7 +372,7 @@ updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                                    VkImageLayout finalColorLayout,
                                    VkImageLayout finalDepthLayout, uint32_t fbCount,
-                                   const Obdn_Framebuffer fbs[fbCount],
+                                   const Obdn_Framebuffer fbs[/*fbCount*/],
                                    const Shiv_Parms* parms, Shiv_Renderer* shiv)
 {
     memset(shiv, 0, sizeof(Shiv_Renderer));

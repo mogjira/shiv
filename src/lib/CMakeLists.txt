@@ -9,3 +9,7 @@ target_link_libraries(shivObj PUBLIC Obsidian::ObsidianObj)
 target_link_libraries(shiv PUBLIC shivObj Obsidian::Obsidian)
 add_library(Shiv::ShivObj ALIAS shivObj)
 add_library(Shiv::Shiv    ALIAS shiv)
+
+if(WIN32)
+set_target_properties(shiv PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+endif()
