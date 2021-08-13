@@ -99,7 +99,7 @@ void draw(void)
     obdn_SceneClearDirt(scene);
 }
 
-int main(int argc, char *argv[])
+int hellmain(void)
 {
     hellmouth = hell_AllocHellmouth();
     grimoire = hell_AllocGrimoire();
@@ -121,13 +121,24 @@ int main(int argc, char *argv[])
     memory = obdn_AllocMemory();
     swapchain = obdn_AllocSwapchain();
     scene = obdn_AllocScene();
-    const char* extnames[] = {
+    const char* testgeopath;
+    #if UNIX
+    const char* instanceExtensions[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_XCB_SURFACE_EXTENSION_NAME
     };
+    testgeopath = "../flip-uv.tnt";
+    #elif WIN32
+    const char* instanceExtensions[] = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+        VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+    };
+    obdn_SetRuntimeSpvPrefix("C:/dev/shiv/build/shaders/");
+    testgeopath = "C:/dev/dali/data/flip-uv.tnt";
+    #endif
     Obdn_InstanceParms ip = {
         .enabledInstanceExentensionCount = 2,
-        .ppEnabledInstanceExtensionNames = extnames
+        .ppEnabledInstanceExtensionNames = instanceExtensions
     };
     obdn_CreateInstance(&ip, instance);
     obdn_CreateMemory(instance, 100, 100, 100, 0, 0, memory);
@@ -138,7 +149,7 @@ int main(int argc, char *argv[])
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                              .format = depthFormat};
     obdn_CreateSwapchain(instance, memory, eventQueue, window, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov, swapchain);
-    obdn_LoadPrim(scene, "flip-uv.tnt", COAL_MAT4_IDENT,(Obdn_MaterialHandle){0});
+    obdn_LoadPrim(scene, testgeopath, COAL_MAT4_IDENT,(Obdn_MaterialHandle){0});
     renderer = shiv_AllocRenderer();
     Shiv_Parms sp = {
         .grim = grimoire
@@ -154,3 +165,17 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+#ifdef WIN32
+int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
+    _In_ PSTR lpCmdLine, _In_ int nCmdShow)
+{
+    hell_SetHinstance(hInstance);
+    hellmain();
+    return 0;
+}
+#elif UNIX
+int main(int argc, char* argv[])
+{
+    hellmain();
+}
+#endif
