@@ -7,3 +7,5 @@ endif()
 
 target_link_libraries(hello Shiv::Shiv)
 target_link_libraries(scene Shiv::Shiv)
+
+set_target_properties(hello scene PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
