@@ -31,7 +31,9 @@ typedef enum {
 #define SPVDIR "shiv"
 #endif
 
+#ifndef WIN32
 _Static_assert(SWAP_IMG_COUNT == 2, "SWAP_IMG_COUNT must be 2 for now");
+#endif
 
 typedef struct {
     Coal_Mat4 view;
