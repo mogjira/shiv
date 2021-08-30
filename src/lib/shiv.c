@@ -485,6 +485,7 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
     for (int i = 0; i < primCount; i++)
     {
         const Obdn_Primitive* prim = obdn_GetPrimitive(scene, i);
+        if (prim->dirt & OBDN_PRIM_UPDATE_REMOVED || prim->flags & OBDN_PRIM_INVISIBLE_BIT) continue;
         //hell_Print("Prim vert count %d\n index count %d\n", prim->geo.vertexCount, prim->geo.indexCount);
         Obdn_Material* mat = obdn_GetMaterial(scene, prim->material);
         uint32_t primIndex = i;
