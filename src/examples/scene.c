@@ -109,7 +109,7 @@ void draw(void)
         &acquireSemaphore, 1, &cmd.semaphore, cmd.fence, cmd.buffer);
     obdn_PresentFrame(swapchain, 1, &cmd.semaphore);
 
-    obdn_SceneClearDirt(scene);
+    obdn_SceneEndFrame(scene);
 }
 
 int hellmain(void)

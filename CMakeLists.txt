@@ -4,16 +4,14 @@ project(Shiv VERSION 0.1.0)
 
 option(SHIV_SKIP_EXAMPLES "Skip building examples" OFF)
 
-if(UNIX)
-set(git_base_url /home/michaelb/dev)
-elseif(WIN32)
-set(git_base_url C:/dev)
+if(NOT DEFINED GIT_BASE_URL)
+    set(GIT_BASE_URL https://github.com/mokchira)
 endif()
 
 include(FetchContent)
 FetchContent_Declare(
     cmake-common
-    GIT_REPOSITORY ${git_base_url}/cmake-common
+    GIT_REPOSITORY ${GIT_BASE_URL}/cmake-common
     GIT_TAG master)
 FetchContent_GetProperties(cmake-common)
 if(NOT ${cmake-common_POPULATED})
@@ -25,7 +23,7 @@ include(header)
 
 FetchContent_Declare(
     obsidian 
-    GIT_REPOSITORY ${git_base_url}/obsidian 
+    GIT_REPOSITORY ${GIT_BASE_URL}/obsidian 
     GIT_TAG master)
 
 FetchContent_MakeAvailable(obsidian)
