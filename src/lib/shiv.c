@@ -7,9 +7,9 @@
 #include <string.h>
 #include "shiv.h"
 
-typedef Obdn_V_BufferRegion      BufferRegion;
-typedef Obdn_V_Command           Command;
-typedef Obdn_V_Image             Image;
+typedef Obdn_BufferRegion      BufferRegion;
+typedef Obdn_Command           Command;
+typedef Obdn_Image             Image;
 typedef Obdn_DescriptorBinding DescriptorBinding;
 
 typedef enum {
@@ -279,11 +279,11 @@ initUniforms(Shiv_Renderer* renderer, Obdn_Memory* memory)
     assert(sizeof(Camera) % props->limits.minUniformBufferOffsetAlignment == 0);
     assert(sizeof(MaterialBlock) % props->limits.minUniformBufferOffsetAlignment == 0);
 
-    renderer->cameraUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(Camera), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_V_MEMORY_HOST_GRAPHICS_TYPE);
+    renderer->cameraUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(Camera), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->cameraUniform.elem[0] = renderer->cameraUniform.buffer.hostData;
     renderer->cameraUniform.elem[1] = (Camera*)renderer->cameraUniform.buffer.hostData + 1;
 
-    renderer->materialUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(MaterialBlock), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_V_MEMORY_HOST_GRAPHICS_TYPE);
+    renderer->materialUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(MaterialBlock), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->materialUniform.elem[0] = renderer->materialUniform.buffer.hostData;
     renderer->materialUniform.elem[1] = (MaterialBlock*)renderer->materialUniform.buffer.hostData + 1;
 
