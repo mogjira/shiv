@@ -11,7 +11,7 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
     cmake-common
-    GIT_REPOSITORY ${GIT_BASE_URL}/cmake-common
+    GIT_REPOSITORY /home/michael/dev/cmake-common
     GIT_TAG master)
 FetchContent_GetProperties(cmake-common)
 if(NOT ${cmake-common_POPULATED})

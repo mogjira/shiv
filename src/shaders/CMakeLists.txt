@@ -1,7 +1,7 @@
 include(author_shaders)
 author_shaders(shaders 
     shiv
-    shiv_spvs
+    Obsidian::glslc
     SOURCES 
     basic.vert
     basic.frag
