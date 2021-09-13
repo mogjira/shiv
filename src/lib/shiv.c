@@ -276,16 +276,16 @@ static void
 initUniforms(Shiv_Renderer* renderer, Obdn_Memory* memory)
 {
     const VkPhysicalDeviceProperties* props = obdn_GetPhysicalDeviceProperties(renderer->instance);
-    assert(sizeof(Camera) % props->limits.minUniformBufferOffsetAlignment == 0);
-    assert(sizeof(MaterialBlock) % props->limits.minUniformBufferOffsetAlignment == 0);
 
-    renderer->cameraUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(Camera), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_MEMORY_HOST_GRAPHICS_TYPE);
+    renderer->cameraUniform.buffer = obdn_RequestBufferRegionArray(memory, sizeof(Camera), 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->cameraUniform.elem[0] = renderer->cameraUniform.buffer.hostData;
-    renderer->cameraUniform.elem[1] = (Camera*)renderer->cameraUniform.buffer.hostData + 1;
+    renderer->cameraUniform.elem[1] = renderer->cameraUniform.buffer.hostData + 
+                                        renderer->cameraUniform.buffer.stride;
 
-    renderer->materialUniform.buffer = obdn_RequestBufferRegion(memory, 2 * sizeof(MaterialBlock), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_MEMORY_HOST_GRAPHICS_TYPE);
+    renderer->materialUniform.buffer = obdn_RequestBufferRegionArray(memory, sizeof(MaterialBlock), 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->materialUniform.elem[0] = renderer->materialUniform.buffer.hostData;
-    renderer->materialUniform.elem[1] = (MaterialBlock*)renderer->materialUniform.buffer.hostData + 1;
+    renderer->materialUniform.elem[1] = renderer->materialUniform.buffer.hostData + 
+                                        renderer->materialUniform.buffer.stride;
 
     VkDescriptorBufferInfo caminfo = {
         .buffer = renderer->cameraUniform.buffer.buffer,
@@ -474,7 +474,8 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
                                        renderer->clearColor.b,
                                        renderer->clearColor.a);
 
-    uint32_t uboOffsets[] = {sizeof(Camera) * fbi, sizeof(MaterialBlock) * fbi};
+    uint32_t uboOffsets[] = {renderer->cameraUniform.buffer.stride * fbi, 
+                             renderer->materialUniform.buffer.stride * fbi};
     vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             renderer->pipelineLayout, 0, 1,
                             &renderer->descriptorSet, LEN(uboOffsets), uboOffsets);
