@@ -10,12 +10,6 @@ endif()
 
 include(FetchContent)
 
-FetchContent_GetProperties(obsidian)
-if (NOT obsidian_POPULATED)
-message(FATAL_ERROR "obsidian populated? ${obsidian_POPULATED}")
-else()
-    message("obsidian populated!")
-endif()
 FetchContent_Declare(
     obsidian 
     GIT_REPOSITORY ${OBSIDIAN_URL}
