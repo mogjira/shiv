@@ -149,7 +149,7 @@ int hellmain(void)
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                              .format = depthFormat};
     obdn_CreateSwapchain(instance, memory, eventQueue, window, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov, swapchain);
-    obdn_LoadPrim(scene, testgeopath, COAL_MAT4_IDENT,(Obdn_MaterialHandle){0});
+    obdn_LoadPrim(scene, testgeopath, COAL_MAT4_IDENT,(Obdn_MaterialHandle){0}, 0x0);
     renderer = shiv_AllocRenderer();
     Shiv_Parms sp = {
         .grim = grimoire
