@@ -28,7 +28,7 @@ void main()
     const Material mat = materials.mat[matId];
     const vec3 tex = texture(textures[texId], uv).rgb;
     float L = dot(N, vec3(0, 0, 1));
-    vec3 C  = L * vec3(mat.r * tex.r, mat.g * tex.g, mat.b * tex.b);
+    vec3 C  = L * vec3(mat.r * tex.r, mat.g * tex.r, mat.b * tex.r);
     outColor = vec4(C, 1.0);
 }
 

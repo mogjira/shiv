@@ -14,6 +14,7 @@ typedef Obdn_DescriptorBinding DescriptorBinding;
 
 typedef enum {
     PIPELINE_BASIC,
+    PIPELINE_BASIC_MONOCHROME_TEX,
     PIPELINE_WIREFRAME,
     PIPELINE_NO_TEX,
     PIPELINE_DEBUG,
@@ -87,6 +88,8 @@ void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg)
         renderer->curPipeline = PIPELINE_WIREFRAME;
     else if (strcmp(arg, "basic") == 0)
         renderer->curPipeline = PIPELINE_BASIC;
+    else if (strcmp(arg, "mono") == 0)
+        renderer->curPipeline = PIPELINE_BASIC_MONOCHROME_TEX;
     else if (strcmp(arg, "notex") == 0)
         renderer->curPipeline = PIPELINE_NO_TEX;
     else if (strcmp(arg, "debug") == 0)
@@ -94,7 +97,7 @@ void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg)
     else if (strcmp(arg, "uvgrid") == 0)
         renderer->curPipeline = PIPELINE_UVGRID;
     else 
-        hell_Print("Options: wireframe basic notex\n");
+        hell_Print("Options: wireframe basic mono notex uvgrid debug\n");
 }
 
 static void changeDrawMode(const Hell_Grimoire* grim, void* data)
@@ -203,6 +206,19 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .pDynamicStates    = dynamicStates,
          .vertShader        = vertshader,
          .fragShader        = SPVDIR"/new.frag.spv"
+    },{
+        // basic_monochromeTexture
+         .renderPass        = instance->renderPass,
+         .layout            = instance->pipelineLayout,
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .polygonMode       = VK_POLYGON_MODE_FILL,
+         .frontFace         = frontFace,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
+         .dynamicStateCount = LEN(dynamicStates),
+         .pDynamicStates    = dynamicStates,
+         .vertShader        = vertshader,
+         .fragShader        = SPVDIR"/new32R.frag.spv"
     },{
         // wireframe 
          .renderPass        = instance->renderPass,
@@ -375,7 +391,7 @@ updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 
 #define MAX_TEXTURE_COUNT 16
 
-void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
+void shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                                    VkImageLayout finalColorLayout,
                                    VkImageLayout finalDepthLayout, uint32_t fbCount,
                                    const Obdn_Framebuffer fbs[/*fbCount*/],
