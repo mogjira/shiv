@@ -23,12 +23,35 @@ layout(set = 0, binding = 1) uniform Materials {
 
 layout(set = 0, binding = 2) uniform sampler2D textures[];
 
+vec4 over(const vec4 a, const vec4 b)
+{
+    const vec3 color = a.rgb + b.rgb * (1. - a.a);
+    const float alpha = a.a + b.a * (1. - a.a);
+    return vec4(color, alpha);
+}
+
+float uvCheckerGrey(vec2 uv, float base, float shift, float tilewidth)
+{
+    uv /= tilewidth;
+    int x = int(uv.x) % 2;
+    int y = int(uv.y) % 2;
+    int r = x ^ y; //should be 0 or 1
+    return base + r * shift;
+}
+
 void main()
 {
     const Material mat = materials.mat[matId];
-    const vec3 tex = texture(textures[texId], uv).rgb;
+    const vec4 tex = texture(textures[texId], uv);
+    //const vec4 C = vec4(mat.r * tex.r, mat.g * tex.g, mat.b * tex.b, tex.a);
+    const vec4 C = vec4(tex.r, tex.r, tex.r, tex.r);
+    float b = uvCheckerGrey(uv, 0.01, 0.002, 0.01);
+    b += uvCheckerGrey(uv, 0.005, 0.002, 0.04);
+    b += uvCheckerGrey(uv, 0.005, 0.002, 0.1);
+    const vec4 uvColor = vec4(b, b, b, 1);
+    const vec4 comp = over(C, uvColor);
     float L = dot(N, vec3(0, 0, 1));
-    vec3 C  = L * vec3(mat.r * tex.r, mat.g * tex.r, mat.b * tex.r);
-    outColor = vec4(C, 1.0);
+    vec3 RGB  = L * vec3(comp.r, comp.g, comp.b);
+    outColor = vec4(RGB, comp.a);
 }
 
