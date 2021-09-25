@@ -14,6 +14,8 @@ Obdn_Swapchain*  swapchain;
 
 Obdn_Scene*      scene;
 
+Obdn_Geometry geo;
+
 Shiv_Renderer*   renderer;
 
 Obdn_Command commands[2];
@@ -149,7 +151,8 @@ int hellmain(void)
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                              .format = depthFormat};
     obdn_CreateSwapchain(instance, memory, eventQueue, window, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov, swapchain);
-    obdn_LoadPrim(scene, testgeopath, COAL_MAT4_IDENT,(Obdn_MaterialHandle){0}, 0x0);
+    geo = obdn_LoadGeo(memory, 0, testgeopath, true);
+    obdn_AddPrim(scene, geo, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
     renderer = shiv_AllocRenderer();
     Shiv_Parms sp = {
         .grim = grimoire

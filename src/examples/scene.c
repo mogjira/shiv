@@ -1,5 +1,7 @@
 #include <hell/hell.h>
+#include <unistd.h>
 #include <obsidian/obsidian.h>
+#include <string.h>
 #include "shiv/shiv.h"
 
 Hell_Hellmouth*  hellmouth;
@@ -13,6 +15,11 @@ Obdn_Memory*     memory;
 Obdn_Swapchain*  swapchain;
 
 Obdn_Scene*      scene;
+
+Obdn_Image    textures[10];
+Obdn_Geometry geos[10];
+uint32_t      primCount;
+Obdn_Geometry geo;
 
 Shiv_Renderer*   renderer;
 
@@ -31,16 +38,46 @@ static int windowHeight = WHEIGHT;
 
 #define TARGET_RENDER_INTERVAL 10000 // render every 30 ms
 
+// TODO: Take an argument here to a texture path on disk. And modify LoadTexture to have 
+// an error return code if the texture is not found
 void addprim(const Hell_Grimoire* grim, void* scenedata)
 {
+    int argc = hell_GetArgC(grim);
+    hell_Print("Argc %d\n", argc);
+    if (hell_GetArgC(grim) != 3)
+    {
+        hell_Print("Must provide a name of the prim [cube] and path to an image to be used as the color texture.\n");
+        return;
+    }
+    const char* primName = hell_GetArg(grim, 1);
+    if (strncmp(primName, "cube", 4) != 0)
+    {
+        hell_Print("Invalid prim specified.\n");
+        return;
+    }
+    const char* path = hell_GetArg(grim, 2);
+    if (access(path, R_OK) != 0) 
+    {
+        hell_Print("Texture file either does not exist or does not grant read permission.\n");
+        return;
+    }
+
     static int x = 0;
     Obdn_Scene* scene = (Obdn_Scene*)scenedata;
     Coal_Mat4 xform = COAL_MAT4_IDENT;
     Coal_Vec3 t = {x, 0, 0};
     xform = coal_Translate_Mat4(t, xform);
-    Obdn_TextureHandle tex = obdn_LoadTexture(scene, "/home/michaelb/pictures/skull.jpg", 4);
+    obdn_LoadImage(
+        memory, path, 4,
+        VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT, VK_SAMPLE_COUNT_1_BIT, VK_FILTER_LINEAR,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, true, OBDN_MEMORY_DEVICE_TYPE, &textures[primCount]);
+    Obdn_TextureHandle tex = obdn_SceneAddTexture(scene, textures[primCount]);
     Obdn_MaterialHandle mat = obdn_SceneCreateMaterial(scene, (Vec3){1, 1, 1}, 0.3, tex, NULL_TEXTURE, NULL_TEXTURE);
-    obdn_SceneAddCube(scene, xform, mat, true);
+    geos[primCount] = obdn_CreateCube(memory, true);
+    obdn_AddPrim(scene, geos[primCount], xform, mat);
+    primCount++;
+    assert(primCount < 10); //arbitrary
     x += 1;
 }
 
@@ -142,6 +179,7 @@ int hellmain(void)
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_XCB_SURFACE_EXTENSION_NAME
     };
+    testgeopath = "../flip-uv.tnt";
     #elif WIN32
     const char* instanceExtensions[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
@@ -165,7 +203,8 @@ int hellmain(void)
     obdn_CreateSwapchain(instance, memory, eventQueue, window,
                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov,
                          swapchain);
-    obdn_LoadPrim(scene, testgeopath, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0}, 0x0);
+    geo = obdn_LoadGeo(memory, 0, testgeopath, true);
+    obdn_AddPrim(scene, geo, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
     renderer = shiv_AllocRenderer();
     Shiv_Parms sp = {
         .grim = grimoire

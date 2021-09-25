@@ -13,7 +13,7 @@ include(FetchContent)
 FetchContent_Declare(
     obsidian 
     GIT_REPOSITORY ${OBSIDIAN_URL}
-    GIT_TAG master)
+    GIT_TAG newscene)
 
 FetchContent_MakeAvailable(obsidian)
 
