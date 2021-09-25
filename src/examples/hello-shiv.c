@@ -152,7 +152,7 @@ int hellmain(void)
                              .format = depthFormat};
     obdn_CreateSwapchain(instance, memory, eventQueue, window, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov, swapchain);
     geo = obdn_LoadGeo(memory, 0, testgeopath, true);
-    obdn_AddPrim(scene, geo, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
+    obdn_SceneAddPrim(scene, &geo, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
     renderer = shiv_AllocRenderer();
     Shiv_Parms sp = {
         .grim = grimoire

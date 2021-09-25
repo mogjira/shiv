@@ -366,7 +366,7 @@ updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
     const Obdn_Texture* textures = obdn_SceneGetTextures(scene);
     for (int i = 0; i < texCount; i++)
     {
-        const Obdn_Image* img = &textures[i].devImage;
+        const Obdn_Image* img = textures[i].devImage;
 
         VkDescriptorImageInfo textureInfo = {
             .imageLayout = img->layout,
@@ -514,7 +514,7 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
                            VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(xform), &xform);
         vkCmdPushConstants(cmdbuf, renderer->pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT, sizeof(xform), sizeof(indices), indices);
-        obdn_DrawGeo(cmdbuf, &prim->geo);
+        obdn_DrawGeo(cmdbuf, prim->geo);
     }
 
     obdn_CmdEndRenderPass(cmdbuf);

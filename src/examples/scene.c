@@ -72,10 +72,10 @@ void addprim(const Hell_Grimoire* grim, void* scenedata)
         VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT, VK_SAMPLE_COUNT_1_BIT, VK_FILTER_LINEAR,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, true, OBDN_MEMORY_DEVICE_TYPE, &textures[primCount]);
-    Obdn_TextureHandle tex = obdn_SceneAddTexture(scene, textures[primCount]);
+    Obdn_TextureHandle tex = obdn_SceneAddTexture(scene, &textures[primCount]);
     Obdn_MaterialHandle mat = obdn_SceneCreateMaterial(scene, (Vec3){1, 1, 1}, 0.3, tex, NULL_TEXTURE, NULL_TEXTURE);
     geos[primCount] = obdn_CreateCube(memory, true);
-    obdn_AddPrim(scene, geos[primCount], xform, mat);
+    obdn_SceneAddPrim(scene, &geos[primCount], xform, mat);
     primCount++;
     assert(primCount < 10); //arbitrary
     x += 1;
@@ -204,7 +204,7 @@ int hellmain(void)
                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov,
                          swapchain);
     geo = obdn_LoadGeo(memory, 0, testgeopath, true);
-    obdn_AddPrim(scene, geo, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
+    obdn_SceneAddPrim(scene, &geo, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
     renderer = shiv_AllocRenderer();
     Shiv_Parms sp = {
         .grim = grimoire
