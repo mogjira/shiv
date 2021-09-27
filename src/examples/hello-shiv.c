@@ -117,7 +117,7 @@ int hellmain(void)
     hell_CreateHellmouth(grimoire, eventQueue, console, 1, &window, draw, NULL, hellmouth);
 
     hell_Subscribe(eventQueue, HELL_EVENT_MASK_WINDOW_BIT, hell_GetWindowID(window), handleWindowResizeEvent, NULL);
-    hell_Subscribe(eventQueue, HELL_EVENT_MASK_MOUSE_BIT, hell_GetWindowID(window), handleMouseEvent, NULL);
+    hell_Subscribe(eventQueue, HELL_EVENT_MASK_POINTER_BIT, hell_GetWindowID(window), handleMouseEvent, NULL);
 
     instance = obdn_AllocInstance();
     memory = obdn_AllocMemory();

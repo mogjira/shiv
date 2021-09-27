@@ -166,7 +166,7 @@ int hellmain(void)
 
     hell_Subscribe(eventQueue, HELL_EVENT_MASK_WINDOW_BIT,
                    hell_GetWindowID(window), handleWindowResizeEvent, NULL);
-    hell_Subscribe(eventQueue, HELL_EVENT_MASK_MOUSE_BIT,
+    hell_Subscribe(eventQueue, HELL_EVENT_MASK_POINTER_BIT,
                    hell_GetWindowID(window), handleMouseEvent, NULL);
 
     instance = obdn_AllocInstance();
