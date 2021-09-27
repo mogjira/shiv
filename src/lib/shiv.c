@@ -14,11 +14,11 @@ typedef Obdn_DescriptorBinding DescriptorBinding;
 
 typedef enum {
     PIPELINE_BASIC,
-    PIPELINE_BASIC_MONOCHROME_TEX,
     PIPELINE_WIREFRAME,
     PIPELINE_NO_TEX,
     PIPELINE_DEBUG,
     PIPELINE_UVGRID,
+    PIPELINE_UVGRID_MONO,
     PIPELINE_COUNT
 } PipelineID;
 
@@ -89,7 +89,7 @@ void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg)
     else if (strcmp(arg, "basic") == 0)
         renderer->curPipeline = PIPELINE_BASIC;
     else if (strcmp(arg, "mono") == 0)
-        renderer->curPipeline = PIPELINE_BASIC_MONOCHROME_TEX;
+        renderer->curPipeline = PIPELINE_UVGRID_MONO;
     else if (strcmp(arg, "notex") == 0)
         renderer->curPipeline = PIPELINE_NO_TEX;
     else if (strcmp(arg, "debug") == 0)
@@ -138,11 +138,6 @@ static void createDescriptorSetLayout(VkDevice device, uint32_t maxTextureCount,
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
             .bindingFlags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
     }};
-
-    Obdn_DescriptorSetInfo dsInfo = {
-        .bindingCount = LEN(bindings),
-        .bindings = bindings
-    };
 
     obdn_CreateDescriptorSetLayout(device, LEN(bindings), bindings, layout);
 }
@@ -207,19 +202,6 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .vertShader        = vertshader,
          .fragShader        = SPVDIR"/new.frag.spv"
     },{
-        // basic_monochromeTexture
-         .renderPass        = instance->renderPass,
-         .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
-         .polygonMode       = VK_POLYGON_MODE_FILL,
-         .frontFace         = frontFace,
-         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
-         .dynamicStateCount = LEN(dynamicStates),
-         .pDynamicStates    = dynamicStates,
-         .vertShader        = vertshader,
-         .fragShader        = SPVDIR"/new32R.frag.spv"
-    },{
         // wireframe 
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
@@ -271,6 +253,19 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .pDynamicStates    = dynamicStates,
          .vertShader        = vertshader,
          .fragShader        = SPVDIR"/uvgrid.frag.spv"
+    },{
+        // uv_monochromeTexture
+         .renderPass        = instance->renderPass,
+         .layout            = instance->pipelineLayout,
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .polygonMode       = VK_POLYGON_MODE_FILL,
+         .frontFace         = frontFace,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
+         .dynamicStateCount = LEN(dynamicStates),
+         .pDynamicStates    = dynamicStates,
+         .vertShader        = vertshader,
+         .fragShader        = SPVDIR"/new32R.frag.spv"
     }};
 
     assert(LEN(pipeInfos) == PIPELINE_COUNT);
@@ -291,8 +286,6 @@ createFramebuffer(Shiv_Renderer* renderer, const Obdn_Framebuffer* fb)
 static void
 initUniforms(Shiv_Renderer* renderer, Obdn_Memory* memory)
 {
-    const VkPhysicalDeviceProperties* props = obdn_GetPhysicalDeviceProperties(renderer->instance);
-
     renderer->cameraUniform.buffer = obdn_RequestBufferRegionArray(memory, sizeof(Camera), 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, OBDN_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->cameraUniform.elem[0] = renderer->cameraUniform.buffer.hostData;
     renderer->cameraUniform.elem[1] = renderer->cameraUniform.buffer.hostData + 
