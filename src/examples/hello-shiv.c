@@ -74,8 +74,11 @@ bool handleMouseEvent(const Hell_Event* ev, void* data)
     return false;
 }
 
+static bool active;
+
 void draw(void)
 {
+    if (!active) return;
     static Hell_Tick timeOfLastRender = 0;
     static Hell_Tick timeSinceLastRender = TARGET_RENDER_INTERVAL;
     static uint64_t frameCounter = 0;
@@ -99,6 +102,25 @@ void draw(void)
     obdn_PresentFrame(swapchain, 1, &cmd.semaphore);
 
     obdn_SceneEndFrame(scene);
+}
+
+static void destroyShivCmd(Hell_Grimoire* grim, void* data)
+{
+    shiv_DestroyRenderer(renderer, grim);
+    active = false;
+}
+
+static void createShivCmd(Hell_Grimoire* grim, void* data)
+{
+    Shiv_Parms sp = {
+        .grim = grimoire
+    };
+    shiv_CreateRenderer(instance, memory, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                        obdn_GetSwapchainFramebufferCount(swapchain),
+                        obdn_GetSwapchainFramebuffers(swapchain), &sp, renderer);
+    obdn_SceneDirtyAll(scene);
+    active = true;
 }
 
 int hellmain(void)
@@ -144,7 +166,7 @@ int hellmain(void)
     };
     obdn_CreateInstance(&ip, instance);
     obdn_CreateMemory(instance, 100, 100, 100, 0, 0, memory);
-    obdn_CreateScene(grimoire, memory, 0.01, 100, scene);
+    obdn_CreateScene(grimoire, memory, 1, 1, 0.01, 100, scene);
     obdn_UpdateCamera_LookAt(scene, (Vec3){0, 0, 5}, (Vec3){0,0,0}, (Vec3){0, 1, 0});
     Obdn_AovInfo depthAov = {.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT,
                              .usageFlags =
@@ -164,6 +186,9 @@ int hellmain(void)
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
     commands[0] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
     commands[1] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
+    hell_AddCommand(grimoire, "destroyshiv", destroyShivCmd, NULL);
+    hell_AddCommand(grimoire, "createshiv", createShivCmd, NULL);
+    active = true;
     hell_Loop(hellmouth);
     return 0;
 }

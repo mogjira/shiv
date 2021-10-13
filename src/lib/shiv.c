@@ -100,7 +100,7 @@ void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg)
         hell_Print("Options: wireframe basic mono notex uvgrid debug\n");
 }
 
-static void changeDrawMode(const Hell_Grimoire* grim, void* data)
+static void changeDrawMode(Hell_Grimoire* grim, void* data)
 {
     Shiv_Renderer* renderer = (Shiv_Renderer*)data;
     const char* arg = hell_GetArg(grim, 1);
@@ -417,6 +417,28 @@ void shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
         hell_AddCommand(parms->grim, "drawmode", changeDrawMode, shiv);
     }
     shiv->clearColor = parms->clearColor;
+}
+
+void shiv_DestroyRenderer(Shiv_Renderer* shiv, Hell_Grimoire* grim)
+{
+    vkDeviceWaitIdle(shiv->device);
+    obdn_FreeBufferRegion(&shiv->cameraUniform.buffer);
+    obdn_FreeBufferRegion(&shiv->materialUniform.buffer);
+    vkDestroyDescriptorPool(shiv->device, shiv->descriptorPool, NULL);
+    for (int i = 0; i < SWAP_IMG_COUNT; i++)
+    {
+        vkDestroyFramebuffer(shiv->device, shiv->framebuffers[i], NULL);
+    }
+    for (int i = 0; i < PIPELINE_COUNT; i++)
+    {
+        vkDestroyPipeline(shiv->device, shiv->graphicsPipelines[i], NULL);
+    }
+    vkDestroyPipelineLayout(shiv->device, shiv->pipelineLayout, NULL);
+    vkDestroyDescriptorSetLayout(shiv->device, shiv->descriptorSetLayout, NULL);
+    vkDestroyRenderPass(shiv->device, shiv->renderPass, NULL);
+    memset(shiv, 0, sizeof(Shiv_Renderer));
+    if (grim)
+        hell_RemoveCommand(grim, "drawmode");
 }
 
 void

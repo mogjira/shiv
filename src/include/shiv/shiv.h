@@ -22,6 +22,8 @@ void           shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                                    VkImageLayout finalDepthLayout, uint32_t fbCount,
                                    const Obdn_Framebuffer fbs[/*fbCount*/],
                                    const Shiv_Parms* parms, Shiv_Renderer* shiv);
+// grim is optional
+void shiv_DestroyRenderer(Shiv_Renderer* shiv, Hell_Grimoire* grim);
 void shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
             const Obdn_Framebuffer* fb, VkCommandBuffer cmdbuf);
 
