@@ -19,6 +19,7 @@ typedef enum {
     PIPELINE_DEBUG,
     PIPELINE_UVGRID,
     PIPELINE_UVGRID_MONO,
+    PIPELINE_UVGRID_MONO_FLAT,
     PIPELINE_COUNT
 } PipelineID;
 
@@ -90,6 +91,8 @@ void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg)
         renderer->curPipeline = PIPELINE_BASIC;
     else if (strcmp(arg, "mono") == 0)
         renderer->curPipeline = PIPELINE_UVGRID_MONO;
+    else if (strcmp(arg, "flat") == 0)
+        renderer->curPipeline = PIPELINE_UVGRID_MONO_FLAT;
     else if (strcmp(arg, "notex") == 0)
         renderer->curPipeline = PIPELINE_NO_TEX;
     else if (strcmp(arg, "debug") == 0)
@@ -266,6 +269,19 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
          .pDynamicStates    = dynamicStates,
          .vertShader        = vertshader,
          .fragShader        = SPVDIR"/new32R.frag.spv"
+    },{
+        // uv_monochrome_flat
+         .renderPass        = instance->renderPass,
+         .layout            = instance->pipelineLayout,
+         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .polygonMode       = VK_POLYGON_MODE_FILL,
+         .frontFace         = frontFace,
+         .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+         .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
+         .dynamicStateCount = LEN(dynamicStates),
+         .pDynamicStates    = dynamicStates,
+         .vertShader        = vertshader,
+         .fragShader        = SPVDIR"/new32Rflat.frag.spv"
     }};
 
     assert(LEN(pipeInfos) == PIPELINE_COUNT);
