@@ -1,3 +1,4 @@
+#define COAL_SIMPLE_TYPE_NAMES
 #include <hell/hell.h>
 #include <unistd.h>
 #include <obsidian/obsidian.h>
@@ -40,7 +41,7 @@ static int windowHeight = WHEIGHT;
 
 // TODO: Take an argument here to a texture path on disk. And modify LoadTexture to have 
 // an error return code if the texture is not found
-void addprim(const Hell_Grimoire* grim, void* scenedata)
+void addprim(Hell_Grimoire* grim, void* scenedata)
 {
     int argc = hell_GetArgC(grim);
     hell_Print("Argc %d\n", argc);
@@ -122,7 +123,7 @@ bool handleMouseEvent(const Hell_Event* ev, void* data)
     return false;
 }
 
-void draw(void)
+void draw(u64 fi, u64 dt)
 {
     static Hell_Tick timeOfLastRender = 0;
     static Hell_Tick timeSinceLastRender = TARGET_RENDER_INTERVAL;
@@ -134,7 +135,7 @@ void draw(void)
     timeSinceLastRender = 0;
 
     VkFence fence = VK_NULL_HANDLE;
-    const Obdn_Framebuffer* fb = obdn_AcquireSwapchainFramebuffer(swapchain, &fence, &acquireSemaphore);
+    const Obdn_Frame* fb = obdn_AcquireSwapchainFrame(swapchain, &fence, &acquireSemaphore);
     Obdn_Command cmd = commands[frameCounter % 2];
     obdn_WaitForFence(obdn_GetDevice(instance), &cmd.fence);
     obdn_ResetCommand(&cmd);
@@ -211,8 +212,8 @@ int hellmain(void)
     };
     shiv_CreateRenderer(instance, memory, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                        obdn_GetSwapchainFramebufferCount(swapchain),
-                        obdn_GetSwapchainFramebuffers(swapchain), &sp, renderer);
+                        obdn_GetSwapchainFrameCount(swapchain),
+                        obdn_GetSwapchainFrames(swapchain), &sp, renderer);
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
     hell_AddCommand(grimoire, "addprim", addprim, scene);
 

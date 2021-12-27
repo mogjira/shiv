@@ -1,11 +1,11 @@
+#define COAL_SIMPLE_TYPE_NAMES
+#include "shiv.h"
 #include <obsidian/common.h>
 #include <obsidian/pipeline.h>
 #include <obsidian/renderpass.h>
-#include <obsidian/framebuffer.h>
 #include <hell/len.h>
 #include <hell/hell.h>
 #include <string.h>
-#include "shiv.h"
 
 typedef Obdn_BufferRegion      BufferRegion;
 typedef Obdn_Command           Command;
@@ -275,11 +275,11 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath, bool openglCo
 }
 
 static void 
-createFramebuffer(Shiv_Renderer* renderer, const Obdn_Framebuffer* fb)
+createFramebuffer(Shiv_Renderer* renderer, const Obdn_Frame* fb)
 {
     assert(fb->aovs[1].aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT);
     VkImageView views[2] = {fb->aovs[0].view, fb->aovs[1].view};
-    obdn_CreateFramebuffer(renderer->instance, 2, views, fb->width, fb->height, renderer->renderPass, &renderer->framebuffers[fb->index]);
+    obdn_CreateFramebuffer(renderer->device, 2, views, fb->width, fb->height, renderer->renderPass, &renderer->framebuffers[fb->index]);
 }
 
 
@@ -387,7 +387,7 @@ updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 void shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                                    VkImageLayout finalColorLayout,
                                    VkImageLayout finalDepthLayout, uint32_t fbCount,
-                                   const Obdn_Framebuffer fbs[/*fbCount*/],
+                                   const Obdn_Frame fbs[/*fbCount*/],
                                    const Shiv_Parms* parms, Shiv_Renderer* shiv)
 {
     memset(shiv, 0, sizeof(Shiv_Renderer));
@@ -443,7 +443,7 @@ void shiv_DestroyRenderer(Shiv_Renderer* shiv, Hell_Grimoire* grim)
 
 void
 shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
-            const Obdn_Framebuffer* fb, VkCommandBuffer cmdbuf)
+            const Obdn_Frame* fb, VkCommandBuffer cmdbuf)
 {
     assert(obdn_GetPrimCount(scene));
     // must create framebuffers or find a cached one
@@ -453,7 +453,7 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
     assert(fbi < 2);
     if (fb->dirty)
     {
-        obdn_DestroyFramebuffer(renderer->instance, renderer->framebuffers[fbi]);
+        obdn_DestroyFramebuffer(renderer->device, renderer->framebuffers[fbi]);
         createFramebuffer(renderer, fb);
     }
 
