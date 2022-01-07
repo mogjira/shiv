@@ -3,6 +3,7 @@
 #include <obsidian/common.h>
 #include <obsidian/pipeline.h>
 #include <obsidian/renderpass.h>
+#include <obsidian/command.h>
 #include <hell/len.h>
 #include <hell/hell.h>
 #include <string.h>
@@ -441,15 +442,13 @@ void shiv_DestroyRenderer(Shiv_Renderer* shiv, Hell_Grimoire* grim)
         hell_RemoveCommand(grim, "drawmode");
 }
 
-void
-shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
-            const Obdn_Frame* fb, VkCommandBuffer cmdbuf)
+void shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
+            const Obdn_Frame* fb, uint32_t x, uint32_t y, uint32_t width, uint32_t height, 
+            VkCommandBuffer cmdbuf)
 {
     assert(obdn_GetPrimCount(scene));
     // must create framebuffers or find a cached one
     const uint32_t fbi = fb->index;
-    const uint32_t width = fb->width;
-    const uint32_t height = fb->height;
     assert(fbi < 2);
     if (fb->dirty)
     {
@@ -495,11 +494,13 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
         renderer->texSemaphore--;
     }
 
-    obdn_CmdSetViewportScissorFull(cmdbuf, width, height);
+    obdn_CmdSetViewportScissor(cmdbuf, x, y, width, height);
 
+    // we want to use the full frame width and height to set the render area.
+    // we rely on the scissor and viewport settings for the clipping.
     obdn_CmdBeginRenderPass_ColorDepth(cmdbuf, renderer->renderPass,
-                                       renderer->framebuffers[fbi], width,
-                                       height, 
+                                       renderer->framebuffers[fbi], 
+                                       fb->width, fb->height, 
                                        renderer->clearColor.r,
                                        renderer->clearColor.g,
                                        renderer->clearColor.b,
@@ -533,6 +534,15 @@ shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
     }
 
     obdn_CmdEndRenderPass(cmdbuf);
+}
+
+void
+shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
+            const Obdn_Frame* fb, VkCommandBuffer cmdbuf)
+{
+    assert(obdn_GetPrimCount(scene));
+    // must create framebuffers or find a cached one
+    shiv_RenderRegion(renderer, scene, fb, 0, 0, fb->width, fb->height, cmdbuf);
 }
 
 void 

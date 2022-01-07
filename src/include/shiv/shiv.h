@@ -31,6 +31,10 @@ void shiv_DestroyRenderer(Shiv_Renderer* shiv, Hell_Grimoire* grim);
 void shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
             const Obdn_Frame* fb, VkCommandBuffer cmdbuf);
 
+void shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
+            const Obdn_Frame* fb, uint32_t x, uint32_t y, uint32_t width, uint32_t height, 
+            VkCommandBuffer cmdbuf);
+
 void shiv_SetDrawMode(Shiv_Renderer* renderer, const char* arg);
 
 #ifdef __cplusplus
