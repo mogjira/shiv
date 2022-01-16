@@ -343,8 +343,8 @@ static void
 updateCamera(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 {
     Camera* cam = (Camera*)renderer->cameraUniform.elem[index];
-    cam->view   = obdn_GetCameraView(scene);
-    cam->proj   = obdn_GetCameraProjection(scene);
+    cam->view   = obdn_SceneGetCameraView(scene);
+    cam->proj   = obdn_SceneGetCameraProjection(scene);
 }
 
 static void
@@ -353,8 +353,8 @@ updateMaterialBlock(Shiv_Renderer* renderer, const Obdn_Scene* scene,
 {
     MaterialBlock* matblock =
         (MaterialBlock*)renderer->materialUniform.elem[index];
-    uint32_t             count     = obdn_SceneGetMaterialCount(scene);
-    const Obdn_Material* materials = obdn_SceneGetMaterials(scene);
+    uint32_t             count;
+    const Obdn_Material* materials = obdn_SceneGetMaterials(scene, &count);
     for (int i = 0; i < count; i++)
     {
         matblock->materials[i].r         = materials[i].color.r;
@@ -367,8 +367,8 @@ updateMaterialBlock(Shiv_Renderer* renderer, const Obdn_Scene* scene,
 static void
 updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 {
-    uint32_t            texCount = obdn_SceneGetTextureCount(scene);
-    const Obdn_Texture* textures = obdn_SceneGetTextures(scene);
+    uint32_t            texCount;
+    const Obdn_Texture* textures = obdn_SceneGetTextures(scene, &texCount);
     for (int i = 0; i < texCount; i++)
     {
         const Obdn_Image* img = textures[i].devImage;
@@ -464,7 +464,7 @@ shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
                   const Obdn_Frame* fb, uint32_t x, uint32_t y, uint32_t width,
                   uint32_t height, VkCommandBuffer cmdbuf)
 {
-    assert(obdn_GetPrimCount(scene));
+    assert(obdn_SceneGetPrimCount(scene));
     // must create framebuffers or find a cached one
     const uint32_t fbi = fb->index;
     assert(fbi < 2);
@@ -474,7 +474,7 @@ shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
         createFramebuffer(renderer, fb);
     }
 
-    Obdn_SceneDirtyFlags dirt = obdn_GetSceneDirt(scene);
+    Obdn_SceneDirtyFlags dirt = obdn_SceneGetDirt(scene);
     if (dirt & OBDN_SCENE_CAMERA_VIEW_BIT || dirt & OBDN_SCENE_CAMERA_PROJ_BIT)
     {
         renderer->cameraUniform.semaphore = 2;
@@ -532,10 +532,11 @@ shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                       renderer->graphicsPipelines[renderer->curPipeline]);
 
-    u32 primCount = obdn_GetPrimCount(scene);
+    u32 primCount;
+    const Obdn_Primitive* prims = obdn_SceneGetPrimitives(scene, &primCount);
     for (int i = 0; i < primCount; i++)
     {
-        const Obdn_Primitive* prim = obdn_GetPrimitive(scene, i);
+        const Obdn_Primitive* prim = &prims[i];
         if (prim->dirt & OBDN_PRIM_REMOVED_BIT ||
             prim->flags & OBDN_PRIM_INVISIBLE_BIT)
             continue;
@@ -564,7 +565,7 @@ void
 shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
             const Obdn_Frame* fb, VkCommandBuffer cmdbuf)
 {
-    assert(obdn_GetPrimCount(scene));
+    assert(obdn_SceneGetPrimCount(scene));
     // must create framebuffers or find a cached one
     shiv_RenderRegion(renderer, scene, fb, 0, 0, fb->width, fb->height, cmdbuf);
 }
