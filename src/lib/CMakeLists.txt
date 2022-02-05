@@ -1,15 +1,12 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_library(shivObj OBJECT)
-add_library(shiv    SHARED)
-target_sources(shivObj PRIVATE shiv.c)
-target_include_directories(shivObj 
+add_library(shiv    STATIC)
+target_sources(shiv PRIVATE shiv.c)
+target_include_directories(shiv
     PRIVATE "../include/shiv"
     INTERFACE "../include")
-target_link_libraries(shivObj PUBLIC Obsidian::ObsidianObj)
-target_link_libraries(shiv PUBLIC shivObj Obsidian::Obsidian)
-add_library(Shiv::ShivObj ALIAS shivObj)
-add_library(Shiv::Shiv    ALIAS shiv)
-target_compile_definitions(shivObj PUBLIC "COAL_SIMPLE_TYPE_NAMES")
+target_link_libraries(shiv PUBLIC Obsidian::Obsidian)
+add_library(Shiv::Shiv ALIAS shiv)
+#target_compile_definitions(shiv PUBLIC "COAL_SIMPLE_TYPE_NAMES")
 
 if(WIN32)
 set_target_properties(shiv PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)

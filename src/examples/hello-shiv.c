@@ -1,3 +1,4 @@
+#define COAL_SIMPLE_TYPE_NAMES
 #include <hell/hell.h>
 #include <obsidian/obsidian.h>
 #include "shiv/shiv.h"
@@ -76,7 +77,7 @@ bool handleMouseEvent(const Hell_Event* ev, void* data)
 
 static bool active;
 
-void draw(void)
+void draw(u64 fi, u64 dt)
 {
     if (!active) return;
     static Hell_Tick timeOfLastRender = 0;
@@ -89,7 +90,7 @@ void draw(void)
     timeSinceLastRender = 0;
 
     VkFence fence = VK_NULL_HANDLE;
-    const Obdn_Framebuffer* fb = obdn_AcquireSwapchainFramebuffer(swapchain, &fence, &acquireSemaphore);
+    const Obdn_Frame* fb = obdn_AcquireSwapchainFrame(swapchain, &fence, &acquireSemaphore);
     Obdn_Command cmd = commands[frameCounter % 2];
     obdn_WaitForFence(obdn_GetDevice(instance), &cmd.fence);
     obdn_ResetCommand(&cmd);
@@ -117,8 +118,8 @@ static void createShivCmd(Hell_Grimoire* grim, void* data)
     };
     shiv_CreateRenderer(instance, memory, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                        obdn_GetSwapchainFramebufferCount(swapchain),
-                        obdn_GetSwapchainFramebuffers(swapchain), &sp, renderer);
+                        obdn_GetSwapchainFrameCount(swapchain),
+                        obdn_GetSwapchainFrames(swapchain), &sp, renderer);
     obdn_SceneDirtyAll(scene);
     active = true;
 }
@@ -181,8 +182,8 @@ int hellmain(void)
     };
     shiv_CreateRenderer(instance, memory, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                        obdn_GetSwapchainFramebufferCount(swapchain),
-                        obdn_GetSwapchainFramebuffers(swapchain), &sp, renderer);
+                        obdn_GetSwapchainFrameCount(swapchain),
+                        obdn_GetSwapchainFrames(swapchain), &sp, renderer);
     obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
     commands[0] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
     commands[1] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
