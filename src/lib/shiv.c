@@ -185,7 +185,8 @@ createPipelineLayout(VkDevice device, const VkDescriptorSetLayout* dsetLayout,
 
 static void
 createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
-                bool openglCompatible, bool countClockwise)
+                bool openglCompatible, bool countClockwise, bool
+                noBackFaceCull)
 {
     Obdn_GeoAttributeSize attrSizes[3] = {12, 12, 8};
 
@@ -198,6 +199,8 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
     VkFrontFace frontFace = countClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE
                                            : VK_FRONT_FACE_CLOCKWISE;
 
+    VkCullModeFlags cullmode = noBackFaceCull ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
+
     const Obdn_GraphicsPipelineInfo pipeInfos[] = {
         {// basic
          .renderPass        = instance->renderPass,
@@ -205,6 +208,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
+         .cullMode          = cullmode,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -217,6 +221,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_LINE,
          .frontFace         = frontFace,
+         .cullMode          = cullmode,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -229,6 +234,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
+         .cullMode          = cullmode,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -241,6 +247,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
+         .cullMode          = cullmode,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -253,6 +260,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
+         .cullMode          = cullmode,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -265,6 +273,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
+         .cullMode          = cullmode,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -278,6 +287,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
          .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
+         .cullMode          = cullmode,
          .primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
          .sampleCount       = VK_SAMPLE_COUNT_1_BIT,
          .dynamicStateCount = LEN(dynamicStates),
@@ -434,7 +444,7 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
     createPipelineLayout(shiv->device, &shiv->descriptorSetLayout,
                          &shiv->pipelineLayout);
     createPipelines(shiv, NULL, parms->openglCompatible,
-                    parms->CCWWindingOrder);
+                    parms->CCWWindingOrder, parms->noBackFaceCull);
     obdn_CreateDescriptorPool(shiv->device, 1, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0,
                               &shiv->descriptorPool);
     obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1,

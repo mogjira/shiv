@@ -18,6 +18,7 @@ typedef struct {
     _Bool             openglCompatible;
     Coal_Vec4         clearColor;
     bool              CCWWindingOrder;
+    bool              noBackFaceCull;
 } Shiv_Parms;
 
 Shiv_Renderer* shiv_AllocRenderer(void);
