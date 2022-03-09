@@ -1,25 +1,25 @@
 #define COAL_SIMPLE_TYPE_NAMES
 #include <hell/hell.h>
-#include <obsidian/obsidian.h>
+#include <onyx/onyx.h>
 #include "shiv/shiv.h"
 
-Hell_Hellmouth*  hellmouth;
+Hell_Mouth*  hellmouth;
 Hell_Grimoire*   grimoire;
 Hell_Window*     window;
 Hell_EventQueue* eventQueue;
 Hell_Console*    console;
 
-Obdn_Instance*   instance;
-Obdn_Memory*     memory;
-Obdn_Swapchain*  swapchain;
+Onyx_Instance*   instance;
+Onyx_Memory*     memory;
+Onyx_Swapchain*  swapchain;
 
-Obdn_Scene*      scene;
+Onyx_Scene*      scene;
 
-Obdn_Geometry geo;
+Onyx_Geometry geo;
 
 Shiv_Renderer*   renderer;
 
-Obdn_Command commands[2];
+Onyx_Command commands[2];
 
 const VkFormat colorFormat = VK_FORMAT_R8G8B8A8_UNORM;
 const VkFormat depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
@@ -69,7 +69,7 @@ bool handleMouseEvent(const Hell_Event* ev, void* data)
         }
     }
     static Vec3 target = {0,0,0};
-    obdn_UpdateCamera_ArcBall(scene, &target, windowWidth, windowHeight, 0.1, xprev, mx, yprev, my, pan, tumble, zoom, false);
+    onyx_UpdateCamera_ArcBall(scene, &target, windowWidth, windowHeight, 0.1, xprev, mx, yprev, my, pan, tumble, zoom, false);
     xprev = mx;
     yprev = my;
     return false;
@@ -77,7 +77,7 @@ bool handleMouseEvent(const Hell_Event* ev, void* data)
 
 static bool active;
 
-void draw(u64 fi, u64 dt)
+void draw(i64 fi, i64 dt)
 {
     if (!active) return;
     static Hell_Tick timeOfLastRender = 0;
@@ -89,20 +89,19 @@ void draw(u64 fi, u64 dt)
     timeOfLastRender = hell_Time();
     timeSinceLastRender = 0;
 
-    VkFence fence = VK_NULL_HANDLE;
-    const Obdn_Frame* fb = obdn_AcquireSwapchainFrame(swapchain, &fence, &acquireSemaphore);
-    Obdn_Command cmd = commands[frameCounter % 2];
-    obdn_WaitForFence(obdn_GetDevice(instance), &cmd.fence);
-    obdn_ResetCommand(&cmd);
-    obdn_BeginCommandBuffer(cmd.buffer);
+    const Onyx_Frame* fb = onyx_AcquireSwapchainFrame(swapchain, VK_NULL_HANDLE, acquireSemaphore);
+    Onyx_Command cmd = commands[frameCounter % 2];
+    onyx_WaitForFence(onyx_GetDevice(instance), &cmd.fence);
+    onyx_ResetCommand(&cmd);
+    onyx_BeginCommandBuffer(cmd.buffer);
     shiv_Render(renderer, scene, fb, cmd.buffer);
-    obdn_EndCommandBuffer(cmd.buffer);
-    obdn_SubmitGraphicsCommand(
+    onyx_EndCommandBuffer(cmd.buffer);
+    onyx_SubmitGraphicsCommand(
         instance, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 1,
         &acquireSemaphore, 1, &cmd.semaphore, cmd.fence, cmd.buffer);
-    obdn_PresentFrame(swapchain, 1, &cmd.semaphore);
+    onyx_PresentFrame(swapchain, 1, &cmd.semaphore);
 
-    obdn_SceneEndFrame(scene);
+    onyx_SceneEndFrame(scene);
 }
 
 static void destroyShivCmd(Hell_Grimoire* grim, void* data)
@@ -118,9 +117,9 @@ static void createShivCmd(Hell_Grimoire* grim, void* data)
     };
     shiv_CreateRenderer(instance, memory, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                        obdn_GetSwapchainFrameCount(swapchain),
-                        obdn_GetSwapchainFrames(swapchain), &sp, renderer);
-    obdn_SceneDirtyAll(scene);
+                        onyx_GetSwapchainFrameCount(swapchain),
+                        onyx_GetSwapchainFrames(swapchain), &sp, renderer);
+    onyx_SceneDirtyAll(scene);
     active = true;
 }
 
@@ -142,10 +141,10 @@ int hellmain(void)
     hell_Subscribe(eventQueue, HELL_EVENT_MASK_WINDOW_BIT, hell_GetWindowID(window), handleWindowResizeEvent, NULL);
     hell_Subscribe(eventQueue, HELL_EVENT_MASK_POINTER_BIT, hell_GetWindowID(window), handleMouseEvent, NULL);
 
-    instance = obdn_AllocInstance();
-    memory = obdn_AllocMemory();
-    swapchain = obdn_AllocSwapchain();
-    scene = obdn_AllocScene();
+    instance = onyx_AllocInstance();
+    memory = onyx_AllocMemory();
+    swapchain = onyx_AllocSwapchain();
+    scene = onyx_AllocScene();
     const char* testgeopath;
     #if UNIX
     const char* instanceExtensions[] = {
@@ -158,35 +157,35 @@ int hellmain(void)
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_KHR_WIN32_SURFACE_EXTENSION_NAME
     };
-    obdn_SetRuntimeSpvPrefix("C:/dev/shiv/build/shaders/");
+    onyx_SetRuntimeSpvPrefix("C:/dev/shiv/build/shaders/");
     testgeopath = "C:/dev/dali/data/flip-uv.tnt";
     #endif
-    Obdn_InstanceParms ip = {
+    Onyx_InstanceParms ip = {
         .enabledInstanceExentensionCount = 2,
         .ppEnabledInstanceExtensionNames = instanceExtensions
     };
-    obdn_CreateInstance(&ip, instance);
-    obdn_CreateMemory(instance, 100, 100, 100, 0, 0, memory);
-    obdn_CreateScene(grimoire, memory, 1, 1, 0.01, 100, scene);
-    obdn_UpdateCamera_LookAt(scene, (Vec3){0, 0, 5}, (Vec3){0,0,0}, (Vec3){0, 1, 0});
-    Obdn_AovInfo depthAov = {.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT,
+    onyx_CreateInstance(&ip, instance);
+    onyx_CreateMemory(instance, 100, 100, 100, 0, 0, memory);
+    onyx_CreateScene(grimoire, memory, 1, 1, 0.01, 100, scene);
+    onyx_UpdateCamera_LookAt(scene, (Vec3){0, 0, 5}, (Vec3){0,0,0}, (Vec3){0, 1, 0});
+    Onyx_AovInfo depthAov = {.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT,
                              .usageFlags =
                                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                              .format = depthFormat};
-    obdn_CreateSwapchain(instance, memory, eventQueue, window, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov, swapchain);
-    geo = obdn_LoadGeo(memory, 0, testgeopath, true);
-    obdn_SceneAddPrim(scene, &geo, COAL_MAT4_IDENT, (Obdn_MaterialHandle){0});
+    onyx_CreateSwapchain(instance, memory, eventQueue, window, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 1, &depthAov, swapchain);
+    geo = onyx_LoadGeo(memory, 0, testgeopath, true);
+    onyx_SceneAddPrim(scene, &geo, COAL_MAT4_IDENT, (Onyx_MaterialHandle){0});
     renderer = shiv_AllocRenderer();
     Shiv_Parms sp = {
         .grim = grimoire
     };
     shiv_CreateRenderer(instance, memory, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                        obdn_GetSwapchainFrameCount(swapchain),
-                        obdn_GetSwapchainFrames(swapchain), &sp, renderer);
-    obdn_CreateSemaphore(obdn_GetDevice(instance), &acquireSemaphore);
-    commands[0] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
-    commands[1] = obdn_CreateCommand(instance, OBDN_V_QUEUE_GRAPHICS_TYPE);
+                        onyx_GetSwapchainFrameCount(swapchain),
+                        onyx_GetSwapchainFrames(swapchain), &sp, renderer);
+    onyx_CreateSemaphore(onyx_GetDevice(instance), &acquireSemaphore);
+    commands[0] = onyx_CreateCommand(instance, ONYX_V_QUEUE_GRAPHICS_TYPE);
+    commands[1] = onyx_CreateCommand(instance, ONYX_V_QUEUE_GRAPHICS_TYPE);
     hell_AddCommand(grimoire, "destroyshiv", destroyShivCmd, NULL);
     hell_AddCommand(grimoire, "createshiv", createShivCmd, NULL);
     active = true;

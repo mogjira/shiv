@@ -1,8 +1,8 @@
 include(author_shaders)
-author_shaders(shiv_shaders 
+author_shaders(shiv_shaders
     shiv
-    Obsidian::glslc
-    SOURCES 
+    Onyx::glslc
+    SOURCES
     basic.vert
     basic.frag
     new.vert

@@ -4,21 +4,21 @@ project(Shiv VERSION 0.1.0)
 
 option(SHIV_SKIP_EXAMPLES "Skip building examples" OFF)
 
-if(NOT DEFINED OBSIDIAN_URL)
-    set(OBSIDIAN_URL https://github.com/mokchira/obsidian)
+if(NOT DEFINED ONYX_URL)
+    set(ONYX_URL https://github.com/mokchira/onyx)
 endif()
 
 include(FetchContent)
 
 FetchContent_Declare(
-    obsidian 
-    GIT_REPOSITORY ${OBSIDIAN_URL}
+    onyx
+    GIT_REPOSITORY ${ONYX_URL}
     GIT_TAG master)
 
-FetchContent_MakeAvailable(obsidian)
+FetchContent_MakeAvailable(onyx)
 
 # So we can use the author_shaders function
-list(APPEND CMAKE_MODULE_PATH ${obsidian_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${onyx_SOURCE_DIR}/cmake)
 
 add_subdirectory(src/lib)
 add_subdirectory(src/shaders)

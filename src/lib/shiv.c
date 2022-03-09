@@ -2,16 +2,16 @@
 #include "shiv.h"
 #include <hell/hell.h>
 #include <hell/len.h>
-#include <obsidian/command.h>
-#include <obsidian/common.h>
-#include <obsidian/pipeline.h>
-#include <obsidian/renderpass.h>
+#include <onyx/command.h>
+#include <onyx/common.h>
+#include <onyx/pipeline.h>
+#include <onyx/renderpass.h>
 #include <string.h>
 
-typedef Obdn_BufferRegion      BufferRegion;
-typedef Obdn_Command           Command;
-typedef Obdn_Image             Image;
-typedef Obdn_DescriptorBinding DescriptorBinding;
+typedef Onyx_BufferRegion      BufferRegion;
+typedef Onyx_Command           Command;
+typedef Onyx_Image             Image;
+typedef Onyx_DescriptorBinding DescriptorBinding;
 
 typedef enum {
     PIPELINE_BASIC,
@@ -49,8 +49,8 @@ typedef struct {
     uint8_t      semaphore;
 } ResourceSwapchain;
 
-// we dont use the Obdn_Material because we want to avoid having to do indirect
-// lookups in the shader. Obdn_Material contains handles to textures: we want to
+// we dont use the Onyx_Material because we want to avoid having to do indirect
+// lookups in the shader. Onyx_Material contains handles to textures: we want to
 // convert these into the real texture indices inside the draw function and pass
 // them to the shader as push constants. to do otherwise would require storing
 // the resource maps in some storage buffer which is silly.
@@ -66,7 +66,7 @@ typedef struct {
 } MaterialBlock;
 
 typedef struct Shiv_Renderer {
-    Obdn_Instance*        instance;
+    Onyx_Instance*        instance;
     ResourceSwapchain     cameraUniform;
     ResourceSwapchain     materialUniform;
     uint8_t               texSemaphore;
@@ -121,7 +121,7 @@ createRenderPasses(VkDevice device, VkFormat colorFormat, VkFormat depthFormat,
     assert(mainRenderPass);
     assert(device);
 
-    obdn_CreateRenderPass_ColorDepth(
+    onyx_CreateRenderPass_ColorDepth(
         device, VK_IMAGE_LAYOUT_UNDEFINED, finalColorLayout,
         VK_IMAGE_LAYOUT_UNDEFINED, finalDepthLayout,
         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE,
@@ -151,7 +151,7 @@ createDescriptorSetLayout(VkDevice device, uint32_t maxTextureCount,
          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT,
          .bindingFlags    = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT}};
 
-    obdn_CreateDescriptorSetLayout(device, LEN(bindings), bindings, layout);
+    onyx_CreateDescriptorSetLayout(device, LEN(bindings), bindings, layout);
 }
 
 static void
@@ -188,7 +188,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
                 bool openglCompatible, bool countClockwise, bool
                 noBackFaceCull)
 {
-    Obdn_GeoAttributeSize attrSizes[3] = {12, 12, 8};
+    Onyx_GeoAttributeSize attrSizes[3] = {12, 12, 8};
 
     VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT,
                                       VK_DYNAMIC_STATE_SCISSOR};
@@ -201,11 +201,11 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
 
     VkCullModeFlags cullmode = noBackFaceCull ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
 
-    const Obdn_GraphicsPipelineInfo pipeInfos[] = {
+    const Onyx_GraphicsPipelineInfo pipeInfos[] = {
         {// basic
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .vertexDescription = onyx_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
          .cullMode          = cullmode,
@@ -218,7 +218,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
         {// wireframe
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .vertexDescription = onyx_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_LINE,
          .frontFace         = frontFace,
          .cullMode          = cullmode,
@@ -231,7 +231,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
         {// notex
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .vertexDescription = onyx_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
          .cullMode          = cullmode,
@@ -244,7 +244,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
         {// debug
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .vertexDescription = onyx_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
          .cullMode          = cullmode,
@@ -257,7 +257,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
         {// grid uv
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .vertexDescription = onyx_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
          .cullMode          = cullmode,
@@ -270,7 +270,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
         {// uv_monochromeTexture
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .vertexDescription = onyx_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
          .cullMode          = cullmode,
@@ -284,7 +284,7 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
         // uv_monochrome_flat
          .renderPass        = instance->renderPass,
          .layout            = instance->pipelineLayout,
-         .vertexDescription = obdn_GetVertexDescription(3, attrSizes),
+         .vertexDescription = onyx_GetVertexDescription(3, attrSizes),
          .polygonMode       = VK_POLYGON_MODE_FILL,
          .frontFace         = frontFace,
          .cullMode          = cullmode,
@@ -298,33 +298,33 @@ createPipelines(Shiv_Renderer* instance, char* postFragShaderPath,
 
     assert(LEN(pipeInfos) == PIPELINE_COUNT);
 
-    obdn_CreateGraphicsPipelines(instance->device, LEN(pipeInfos), pipeInfos,
+    onyx_CreateGraphicsPipelines(instance->device, LEN(pipeInfos), pipeInfos,
                                  instance->graphicsPipelines);
 }
 
 static void
-createFramebuffer(Shiv_Renderer* renderer, const Obdn_Frame* fb)
+createFramebuffer(Shiv_Renderer* renderer, const Onyx_Frame* fb)
 {
     assert(fb->aovs[1].aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT);
     VkImageView views[2] = {fb->aovs[0].view, fb->aovs[1].view};
-    obdn_CreateFramebuffer(renderer->device, 2, views, fb->width, fb->height,
+    onyx_CreateFramebuffer(renderer->device, 2, views, fb->width, fb->height,
                            renderer->renderPass,
                            &renderer->framebuffers[fb->index]);
 }
 
 static void
-initUniforms(Shiv_Renderer* renderer, Obdn_Memory* memory)
+initUniforms(Shiv_Renderer* renderer, Onyx_Memory* memory)
 {
-    renderer->cameraUniform.buffer = obdn_RequestBufferRegionArray(
+    renderer->cameraUniform.buffer = onyx_RequestBufferRegionArray(
         memory, sizeof(Camera), 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        OBDN_MEMORY_HOST_GRAPHICS_TYPE);
+        ONYX_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->cameraUniform.elem[0] = renderer->cameraUniform.buffer.hostData;
     renderer->cameraUniform.elem[1] = renderer->cameraUniform.buffer.hostData +
                                       renderer->cameraUniform.buffer.stride;
 
-    renderer->materialUniform.buffer = obdn_RequestBufferRegionArray(
+    renderer->materialUniform.buffer = onyx_RequestBufferRegionArray(
         memory, sizeof(MaterialBlock), 2, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        OBDN_MEMORY_HOST_GRAPHICS_TYPE);
+        ONYX_MEMORY_HOST_GRAPHICS_TYPE);
     renderer->materialUniform.elem[0] =
         renderer->materialUniform.buffer.hostData;
     renderer->materialUniform.elem[1] =
@@ -367,21 +367,21 @@ initUniforms(Shiv_Renderer* renderer, Obdn_Memory* memory)
 }
 
 static void
-updateCamera(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
+updateCamera(Shiv_Renderer* renderer, const Onyx_Scene* scene, uint8_t index)
 {
     Camera* cam = (Camera*)renderer->cameraUniform.elem[index];
-    cam->view   = obdn_SceneGetCameraView(scene);
-    cam->proj   = obdn_SceneGetCameraProjection(scene);
+    cam->view   = onyx_SceneGetCameraView(scene);
+    cam->proj   = onyx_SceneGetCameraProjection(scene);
 }
 
 static void
-updateMaterialBlock(Shiv_Renderer* renderer, const Obdn_Scene* scene,
+updateMaterialBlock(Shiv_Renderer* renderer, const Onyx_Scene* scene,
                     uint8_t index)
 {
     MaterialBlock* matblock =
         (MaterialBlock*)renderer->materialUniform.elem[index];
     uint32_t             count;
-    const Obdn_Material* materials = obdn_SceneGetMaterials(scene, &count);
+    const Onyx_Material* materials = onyx_SceneGetMaterials(scene, &count);
     for (int i = 0; i < count; i++)
     {
         matblock->materials[i].r         = materials[i].color.r;
@@ -392,13 +392,13 @@ updateMaterialBlock(Shiv_Renderer* renderer, const Obdn_Scene* scene,
 }
 
 static void
-updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
+updateTextures(Shiv_Renderer* renderer, const Onyx_Scene* scene, uint8_t index)
 {
     uint32_t            texCount;
-    const Obdn_Texture* textures = obdn_SceneGetTextures(scene, &texCount);
+    const Onyx_Texture* textures = onyx_SceneGetTextures(scene, &texCount);
     for (int i = 0; i < texCount; i++)
     {
-        const Obdn_Image* img = textures[i].devImage;
+        const Onyx_Image* img = textures[i].devImage;
 
         VkDescriptorImageInfo textureInfo = {
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -422,16 +422,16 @@ updateTextures(Shiv_Renderer* renderer, const Obdn_Scene* scene, uint8_t index)
 #define MAX_TEXTURE_COUNT 16
 
 void
-shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
+shiv_CreateRenderer(Onyx_Instance* instance, Onyx_Memory* memory,
                     VkImageLayout finalColorLayout,
                     VkImageLayout finalDepthLayout, uint32_t fbCount,
-                    const Obdn_Frame fbs[/*fbCount*/], const Shiv_Parms* parms,
+                    const Onyx_Frame fbs[/*fbCount*/], const Shiv_Parms* parms,
                     Shiv_Renderer* shiv)
 {
     memset(shiv, 0, sizeof(Shiv_Renderer));
     assert(fbCount == SWAP_IMG_COUNT);
     shiv->instance = instance;
-    shiv->device   = obdn_GetDevice(instance);
+    shiv->device   = onyx_GetDevice(instance);
 
     assert(fbCount == 2);
     assert(fbs[0].aovs[0].aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
@@ -445,9 +445,9 @@ shiv_CreateRenderer(Obdn_Instance* instance, Obdn_Memory* memory,
                          &shiv->pipelineLayout);
     createPipelines(shiv, NULL, parms->openglCompatible,
                     parms->CCWWindingOrder, parms->noBackFaceCull);
-    obdn_CreateDescriptorPool(shiv->device, 1, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0,
+    onyx_CreateDescriptorPool(shiv->device, 1, 1, MAX_TEXTURE_COUNT, 0, 0, 0, 0,
                               &shiv->descriptorPool);
-    obdn_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1,
+    onyx_AllocateDescriptorSets(shiv->device, shiv->descriptorPool, 1,
                                 &shiv->descriptorSetLayout,
                                 &shiv->descriptorSet);
     for (int i = 0; i < fbCount; i++)
@@ -467,8 +467,8 @@ void
 shiv_DestroyRenderer(Shiv_Renderer* shiv, Hell_Grimoire* grim)
 {
     vkDeviceWaitIdle(shiv->device);
-    obdn_FreeBufferRegion(&shiv->cameraUniform.buffer);
-    obdn_FreeBufferRegion(&shiv->materialUniform.buffer);
+    onyx_FreeBufferRegion(&shiv->cameraUniform.buffer);
+    onyx_FreeBufferRegion(&shiv->materialUniform.buffer);
     vkDestroyDescriptorPool(shiv->device, shiv->descriptorPool, NULL);
     for (int i = 0; i < SWAP_IMG_COUNT; i++)
     {
@@ -487,30 +487,30 @@ shiv_DestroyRenderer(Shiv_Renderer* shiv, Hell_Grimoire* grim)
 }
 
 void
-shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
-                  const Obdn_Frame* fb, uint32_t x, uint32_t y, uint32_t width,
+shiv_RenderRegion(Shiv_Renderer* renderer, const Onyx_Scene* scene,
+                  const Onyx_Frame* fb, uint32_t x, uint32_t y, uint32_t width,
                   uint32_t height, VkCommandBuffer cmdbuf)
 {
-    assert(obdn_SceneGetPrimCount(scene));
+    assert(onyx_SceneGetPrimCount(scene));
     // must create framebuffers or find a cached one
     const uint32_t fbi = fb->index;
     assert(fbi < 2);
     if (fb->dirty)
     {
-        obdn_DestroyFramebuffer(renderer->device, renderer->framebuffers[fbi]);
+        onyx_DestroyFramebuffer(renderer->device, renderer->framebuffers[fbi]);
         createFramebuffer(renderer, fb);
     }
 
-    Obdn_SceneDirtyFlags dirt = obdn_SceneGetDirt(scene);
-    if (dirt & OBDN_SCENE_CAMERA_VIEW_BIT || dirt & OBDN_SCENE_CAMERA_PROJ_BIT)
+    Onyx_SceneDirtyFlags dirt = onyx_SceneGetDirt(scene);
+    if (dirt & ONYX_SCENE_CAMERA_VIEW_BIT || dirt & ONYX_SCENE_CAMERA_PROJ_BIT)
     {
         renderer->cameraUniform.semaphore = 2;
     }
-    if (dirt & OBDN_SCENE_MATERIALS_BIT)
+    if (dirt & ONYX_SCENE_MATERIALS_BIT)
     {
         renderer->materialUniform.semaphore = 2;
     }
-    if (dirt & OBDN_SCENE_TEXTURES_BIT)
+    if (dirt & ONYX_SCENE_TEXTURES_BIT)
     {
         // we block until all queues have finished before updating textures
         // the are not double buffered, so we only need a switch semaphore
@@ -541,11 +541,11 @@ shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
         renderer->texSemaphore--;
     }
 
-    obdn_CmdSetViewportScissor(cmdbuf, x, y, width, height);
+    onyx_CmdSetViewportScissor(cmdbuf, x, y, width, height);
 
     // we want to use the full frame width and height to set the render area.
     // we rely on the scissor and viewport settings for the clipping.
-    obdn_CmdBeginRenderPass_ColorDepth(
+    onyx_CmdBeginRenderPass_ColorDepth(
         cmdbuf, renderer->renderPass, renderer->framebuffers[fbi], fb->width,
         fb->height, renderer->clearColor.r, renderer->clearColor.g,
         renderer->clearColor.b, renderer->clearColor.a);
@@ -560,20 +560,20 @@ shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
                       renderer->graphicsPipelines[renderer->curPipeline]);
 
     u32 primCount;
-    const Obdn_Primitive* prims = obdn_SceneGetPrimitives(scene, &primCount);
+    const Onyx_Primitive* prims = onyx_SceneGetPrimitives(scene, &primCount);
     for (int i = 0; i < primCount; i++)
     {
-        const Obdn_Primitive* prim = &prims[i];
-        if (prim->dirt & OBDN_PRIM_REMOVED_BIT ||
-            prim->flags & OBDN_PRIM_INVISIBLE_BIT)
+        const Onyx_Primitive* prim = &prims[i];
+        if (prim->dirt & ONYX_PRIM_REMOVED_BIT ||
+            prim->flags & ONYX_PRIM_INVISIBLE_BIT)
             continue;
         // hell_Print("Prim vert count %d\n index count %d\n",
         // prim->geo.vertexCount, prim->geo.indexCount);
-        Obdn_Material* mat       = obdn_GetMaterial(scene, prim->material);
+        Onyx_Material* mat       = onyx_GetMaterial(scene, prim->material);
         uint32_t       primIndex = i;
-        uint32_t matIndex = obdn_SceneGetMaterialIndex(scene, prim->material);
+        uint32_t matIndex = onyx_SceneGetMaterialIndex(scene, prim->material);
         uint32_t texIndex =
-            obdn_SceneGetTextureIndex(scene, mat->textureAlbedo);
+            onyx_SceneGetTextureIndex(scene, mat->textureAlbedo);
         Mat4     xform     = prim->xform;
         uint32_t indices[] = {primIndex, matIndex, texIndex};
         vkCmdPushConstants(cmdbuf, renderer->pipelineLayout,
@@ -582,17 +582,17 @@ shiv_RenderRegion(Shiv_Renderer* renderer, const Obdn_Scene* scene,
         vkCmdPushConstants(cmdbuf, renderer->pipelineLayout,
                            VK_SHADER_STAGE_VERTEX_BIT, sizeof(xform),
                            sizeof(indices), indices);
-        obdn_DrawGeo(cmdbuf, prim->geo);
+        onyx_DrawGeo(cmdbuf, prim->geo);
     }
 
-    obdn_CmdEndRenderPass(cmdbuf);
+    onyx_CmdEndRenderPass(cmdbuf);
 }
 
 void
-shiv_Render(Shiv_Renderer* renderer, const Obdn_Scene* scene,
-            const Obdn_Frame* fb, VkCommandBuffer cmdbuf)
+shiv_Render(Shiv_Renderer* renderer, const Onyx_Scene* scene,
+            const Onyx_Frame* fb, VkCommandBuffer cmdbuf)
 {
-    assert(obdn_SceneGetPrimCount(scene));
+    assert(onyx_SceneGetPrimCount(scene));
     // must create framebuffers or find a cached one
     shiv_RenderRegion(renderer, scene, fb, 0, 0, fb->width, fb->height, cmdbuf);
 }

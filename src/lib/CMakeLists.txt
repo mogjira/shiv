@@ -4,7 +4,7 @@ target_sources(shiv PRIVATE shiv.c)
 target_include_directories(shiv
     PRIVATE "../include/shiv"
     INTERFACE "../include")
-target_link_libraries(shiv PUBLIC Obsidian::Obsidian)
+target_link_libraries(shiv PUBLIC Onyx::Onyx)
 add_library(Shiv::Shiv ALIAS shiv)
 #target_compile_definitions(shiv PUBLIC "COAL_SIMPLE_TYPE_NAMES")
 
